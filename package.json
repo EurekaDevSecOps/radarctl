@@ -21,7 +21,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/EurekaDevSecOps/radar.git"
+    "url": "https://github.com/EurekaDevSecOps/radarctl.git"
   },
   "dependencies": {
     "@persistr/clif": "^1.11.0",
