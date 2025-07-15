@@ -1,0 +1,36 @@
+{
+  "name": "radar",
+  "version": "1.0.0",
+  "description": "Radar is an open-source orchestrator of security scanners.",
+  "homepage": "https://www.eurekadevsecops.com/radar",
+  "keywords": [
+    "eureka",
+    "devsecops",
+    "radar",
+    "security",
+    "scanner",
+    "asoc",
+    "aspm"
+  ],
+  "license": "GPL-3.0-only",
+  "author": "Sasa Djolic <s.djolic@eurekadevsecops.com> (https://www.linkedin.com/in/sasadjolic/)",
+  "type": "commonjs",
+  "main": "cli.js",
+  "scripts": {
+    "test": "standard"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/EurekaDevSecOps/radar.git"
+  },
+  "dependencies": {
+    "@persistr/clif": "^1.11.0",
+    "@persistr/clif-plugin-settings": "^2.3.1",
+    "humanize-duration": "^3.33.0",
+    "smol-toml": "^1.4.1",
+    "tiny-spinner": "^2.0.5"
+  },
+  "devDependencies": {
+    "standard": "*"
+  }
+}
