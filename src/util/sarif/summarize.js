@@ -26,7 +26,7 @@ module.exports = (sarif, dir) => {
 
       for (const rule of run.tool.driver.rules) {
         if (rule.id === result.ruleId) {
-          const level = rule.defaultConfiguration.level
+          const level = rule?.defaultConfiguration?.level ?? 'error'
           if (level === 'error' || level === 'warning' || level === 'note') {
             finding.level = level
             summary[`${finding.level}s`].push(finding)
