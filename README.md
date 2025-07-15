@@ -1,9 +1,12 @@
-                 |             
-  __|  _` |   _` |   _` |   __|
- |    (   |  (   |  (   |  |   
-_|   \__,_| \__,_| \__,_| _|   
+<pre>
+               _            
+ _ __ __ _  __| | __ _ _ __ 
+| '__/ _` |/ _` |/ _` | '__|
+| | | (_| | (_| | (_| | |   
+|_|  \__,_|\__,_|\__,_|_|
+</pre>
 
-# radarctl
+# Introduction
 
 radarctl is a command-line interface for Radar, an open-source orchestrator of security scanners. Radar is part of the Eureka DevSecOps platform.
 
@@ -36,4 +39,5 @@ radar scan
 ```
 
 ## Contributing guide
+
 See [CONTRIBUTING.md](./CONTRIBUTING.md)
