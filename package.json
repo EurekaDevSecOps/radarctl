@@ -16,6 +16,9 @@
   "author": "Sasa Djolic <s.djolic@eurekadevsecops.com> (https://www.linkedin.com/in/sasadjolic/)",
   "type": "commonjs",
   "main": "cli.js",
+  "bin": {
+    "radar": "cli.js"
+  },
   "scripts": {
     "test": "standard"
   },
