@@ -12,30 +12,46 @@ radarctl is a command-line interface for Radar, an open-source orchestrator of s
 
 ## Installation
 
-## Using a Package Manager
-
-#### [NPM](https://npmjs.com) (macOS, Linux, WSL)
+Install the Radar CLI on the command-line using [NPM](https://npmjs.com):
 
 ```bash
-npm install -g radar
+npm i -g @eurekadevsecops/radar
 ```
-
-## Downloading from GitHub
-
-Download the appropriate version from the [Releases](https://github.com/eurekadevsecops/radarctl/releases) page of the `radarctl` GitHub repository.
 
 ## Getting Started
 
-Get familiar with built-in radar help pages:
+Run the Radar CLI:
+
+```bash
+radar
+```
+
+You will get a list of available commands:
+```bash
+COMMANDS 
+  help      display help              
+  scan      scan for vulnerabilities  
+  scanners  display available scanners 
+```
+
+View help page for each command by using `help` on the command-line:
 
 ```bash
 radar help
 ```
 
+## Running a Scan
+
 Run a scan on the source code in the current working directory:
 
 ```bash
 radar scan
+```
+
+Refer to help for the `scan` command for more information.
+
+```bash
+radar help scan
 ```
 
 ## Contributing guide
