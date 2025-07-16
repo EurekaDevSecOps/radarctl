@@ -91,6 +91,11 @@ module.exports = {
     if (args.CATEGORIES && !['all', 'sca', 'sast', 'dast'].includes(args.CATEGORIES.toLowerCase())) throw new Error(`CATEGORIES must be one of 'all', 'SCA', 'SAST', or 'DAST'`)
     if (!args.SCANNERS && !args.CATEGORIES) args.CATEGORIES = 'sast'
     if (!args.SCANNERS && (args.CATEGORIES === 'all')) args.CATEGORIES = ''
+    if (args.SCANNERS) {
+      const unknownScanners = args.SCANNERS.split(',').filter(name => !availableScanners.find(scanner => scanner.name === name))
+      if (unknownScanners.length > 1) throw new Error(`Unknown scanners: ${unknownScanners.join(', ')}`)
+      else if (unknownScanners.length === 1) throw new Error(`Unknown scanner: ${unknownScanners[0]}`)
+    }
 
     // Set scan parameters.
     const target = path.resolve(args.TARGET) // target to scan
