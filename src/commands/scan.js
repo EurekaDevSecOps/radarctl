@@ -46,11 +46,12 @@ module.exports = {
     some may belong to multiple categories. You could run all available SAST 
     scanners, for example, by passing in SAST as the value for the CATEGORIES
     option. Values are case-insensitive. Multiple values should be comma-separated.
-    Defaults to "SAST".
+    Defaults to "SAST", unless you use the SCANNERS option in which case the
+    default value for CATEGORIES is ignored. To run all scanners across all
+    categories, use the value "all" for CATEGORIES.
 
-    You can specify both SCANNERS and CATEGORIES at the same time. The list of
-    available scanners is filtered by the given SCANNERS and CATEGORIES on the
-    command line, and any matching scanners are then used for the scan.
+    You can specify both SCANNERS and CATEGORIES at the same time. This will run
+    all scanners provided in both options.
 
     By default, findings are displayed as high, moderate, and low. This is the
     'security' severity format. Findings can also be displayed as errors, warnings,
@@ -87,10 +88,11 @@ module.exports = {
     args.TARGET = path.normalize(args.TARGET ?? process.cwd())
     args.FORMAT = args.FORMAT ?? 'security'
     if (args.FORMAT !== 'sarif' && args.FORMAT !== 'security') throw new Error('FORMAT must be one of \'sarif\' or \'security\'')
-    args.CATEGORIES = args.CATEGORIES ?? 'sast'
+    if (args.CATEGORIES && !['all', 'sca', 'sast', 'dast'].includes(args.CATEGORIES.toLowerCase())) throw new Error(`CATEGORIES must be one of 'all', 'SCA', 'SAST', or 'DAST'`)
+    if (!args.SCANNERS && !args.CATEGORIES) args.CATEGORIES = 'sast'
+    if (!args.SCANNERS && (args.CATEGORIES === 'all')) args.CATEGORIES = ''
 
     // Set scan parameters.
-    // const target  = args.TARGET ? path.resolve(args.TARGET) : "$PWD"      // target to scan
     const target = path.resolve(args.TARGET) // target to scan
     const assets = path.join(__dirname, '..', '..', 'scanners') // scanner assets
     const outdir = fs.mkdtempSync(path.join(os.tmpdir(), 'radar-')) // output directory
