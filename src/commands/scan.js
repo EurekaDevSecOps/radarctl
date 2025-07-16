@@ -114,8 +114,12 @@ module.exports = {
         return false
       })
 
+    // At least one scanner must be selected in order to have a successful scan.
+    if (scanners.length === 0) throw new Error('No available scanners selected.')
+
     // Run scanners.
     let isScanCompleted = true
+    log(`Running ${scanners.length} of ${availableScanners.length} scanners:`)
     for (const scanner of scanners) {
       let label = scanner.name
       const spinner = new Spinner()
