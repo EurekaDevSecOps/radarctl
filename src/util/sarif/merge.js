@@ -12,6 +12,7 @@ module.exports = {
 */
 
 const fs = require('node:fs')
+const path = require('node:path')
 module.exports = async (files, outfile) => {
   const sarif = {
     version: '2.1.0',
@@ -25,13 +26,15 @@ module.exports = async (files, outfile) => {
     for (const run of scan.runs) {
       const tool = {
         driver: {
-          name: run.tool.driver.name,
+          name: path.parse(file).name,
           semanticVersion: run.tool.driver.semanticVersion,
           informationUri: run.tool.driver.informationUri,
-          properties: run.tool.driver.properties,
+          properties: run.tool.driver.properties ?? {},
           rules: []
         }
       }
+
+      tool.driver.properties.officialName = run.tool.driver.name
 
       const rules = new Map()
       for (const result of run.results) {
