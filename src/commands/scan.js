@@ -82,15 +82,26 @@ module.exports = {
     '$ radar scan -e warning,note ' + '(treat warnings and notes as errors)'.grey
   ],
   run: async (toolbox, args) => {
-    const { log, scanners: availableScanners, telemetry } = toolbox
+    const { log, scanners: availableScanners } = toolbox
+    // List of existing scanner categories from toml
+    const availableCategories = Array.from(new Set(availableScanners.flatMap(scnr => scnr.categories)))
+    // Array holding categories selected by user
+    let selectedCategories = []
+    // Store valid/available categories from user input
+    if (args.CATEGORIES) {
+      selectedCategories = args.CATEGORIES
+        .toUpperCase()
+        .split(',')
+        .filter(cat => availableCategories.concat(['ALL']).includes(cat))
+    }
 
     // Set defaults.
     args.TARGET = path.normalize(args.TARGET ?? process.cwd())
     args.FORMAT = args.FORMAT ?? 'security'
     if (args.FORMAT !== 'sarif' && args.FORMAT !== 'security') throw new Error('FORMAT must be one of \'sarif\' or \'security\'')
-    if (args.CATEGORIES && !['all', 'sca', 'sast', 'dast'].includes(args.CATEGORIES.toLowerCase())) throw new Error(`CATEGORIES must be one of 'all', 'SCA', 'SAST', or 'DAST'`)
-    if (!args.SCANNERS && !args.CATEGORIES) args.CATEGORIES = 'sast'
-    if (!args.SCANNERS && (args.CATEGORIES === 'all')) args.CATEGORIES = ''
+    if (!selectedCategories.length) throw new Error(`CATEGORIES must be one of '${availableCategories.join("', '")}' or 'all'`)
+    if (!args.SCANNERS && !selectedCategories.length) selectedCategories = ['SAST']
+    if (!args.SCANNERS && selectedCategories.includes('ALL')) selectedCategories = []
     if (args.SCANNERS) {
       const unknownScanners = args.SCANNERS.split(',').filter(name => !availableScanners.find(scanner => scanner.name === name))
       if (unknownScanners.length > 1) throw new Error(`Unknown scanners: ${unknownScanners.join(', ')}`)
@@ -114,8 +125,8 @@ module.exports = {
 
       // Filter by scanner categories given by the user:
       .filter(scanner => {
-        if (!args.CATEGORIES) return true
-        for (const category of args.CATEGORIES.toUpperCase().split(',')) {
+        if (!selectedCategories.length) return true
+        for (const category of selectedCategories) {
           if (scanner.categories.includes(category)) return true
         }
         return false
