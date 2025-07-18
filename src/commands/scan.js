@@ -251,7 +251,7 @@ module.exports = {
       if (!args.QUIET) {
         log()
         sariftools.display_findings(summary, args.FORMAT, log)
-        if (outfile) log(`Findings exported to ${consolidated}`)
+        if (outfile) log(`Findings exported to ${outfile}`)
         sariftools.display_totals(summary, args.FORMAT, log)
       }
 
