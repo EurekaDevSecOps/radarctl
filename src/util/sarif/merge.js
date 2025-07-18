@@ -51,5 +51,20 @@ module.exports = async (files, outfile) => {
     }
   }
 
+  // Clean up the SARIF object, to conform to the SARIF schema.
+  for (const run of sarif.runs) {
+    for (const result of run.results) {
+      const partialFingerprints = result.partialFingerprints
+      if (partialFingerprints) {
+        if (!partialFingerprints.commitSha) delete partialFingerprints.commitSha
+        if (!partialFingerprints.email) delete partialFingerprints.email
+        if (!partialFingerprints.author) delete partialFingerprints.author
+        if (!partialFingerprints.date) delete partialFingerprints.date
+        if (!partialFingerprints.commitMessage) delete partialFingerprints.commitMessage
+        if (Object.keys(partialFingerprints).length === 0) delete result.partialFingerprints
+      }
+    }
+  }
+
   fs.writeFileSync(outfile, JSON.stringify(sarif))
 }
