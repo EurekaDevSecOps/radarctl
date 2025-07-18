@@ -30,6 +30,7 @@
     "@persistr/clif": "^1.11.0",
     "@persistr/clif-plugin-settings": "^2.3.1",
     "humanize-duration": "^3.33.0",
+    "luxon": "^3.7.1",
     "smol-toml": "^1.4.1",
     "tiny-spinner": "^2.0.5"
   },
