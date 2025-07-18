@@ -82,7 +82,8 @@ module.exports = {
     '$ radar scan -e warning,note ' + '(treat warnings and notes as errors)'.grey
   ],
   run: async (toolbox, args) => {
-    const { log, scanners: availableScanners } = toolbox
+
+    const { log, scanners: availableScanners, telemetry } = toolbox
     // List of existing scanner categories from toml
     const availableCategories = Array.from(new Set(availableScanners.flatMap(scnr => scnr.categories)))
     // Array holding categories selected by user
@@ -135,8 +136,19 @@ module.exports = {
     // At least one scanner must be selected in order to have a successful scan.
     if (scanners.length === 0) throw new Error('No available scanners selected.')
 
+    // Send telemetry: scan started.
+    let scanID = undefined
+    const isTelemetryEnabled = telemetry.enabled()
+    if (isTelemetryEnabled) {
+      // TODO: Should pass scanID to the server; not read it from the server.
+      const response = await telemetry.send(`scans/started`, {}, { scanners: scanners.map((scanner) => scanner.name) })
+      const data = await response.json()
+      scanID = data.scan_id
+    }
+
     // Run scanners.
     let isScanCompleted = true
+    let runLog = ''
     log(`Running ${scanners.length} of ${availableScanners.length} scanners:`)
     for (const scanner of scanners) {
       let label = scanner.name
@@ -159,7 +171,9 @@ module.exports = {
         cmd = cmd.replaceAll('${output}', outdir)
         /* eslint-enable no-template-curly-in-string */
 
-        /* const { stdout } = */ await exec(cmd)
+        const { stdout } = await exec(cmd)
+        runLog += stdout
+
         if (!args.QUIET) spinner.success(label)
       } catch (error) {
         isScanCompleted = false
@@ -224,16 +238,32 @@ module.exports = {
         fs.writeFileSync(outfile, JSON.stringify(sarif))
       }
 
-      // TODO: Upload SARIF to user's Eureka account.
-
       // Count findings by severity level.
       const summary = await sariftools.summarize(sarif, target)
+
+      // Send telemetry.
+      if (isTelemetryEnabled && scanID) {
+        // Scan completed.
+        telemetry.send(`scans/:scanID/completed`, { scanID }, {
+          findings: {
+            total: summary.errors.length + summary.warnings.length + summary.notes.length,
+            critical: 0,
+            high: summary.errors.length,
+            med: summary.warnings.length,
+            low: summary.notes.length
+          }
+        })
+
+        // Send sensitive telemetry: scan log and scan findings.
+        telemetry.sendSensitive(`scans/:scanID/log`, { scanID }, runLog)
+        telemetry.sendSensitive(`scans/:scanID/findings`, { scanID }, { findings: sarif })
+      }
 
       // Display summarized findings.
       if (!args.QUIET) {
         log()
         sariftools.display_findings(summary, args.FORMAT, log)
-        if (outfile) log(`Findings exported to ${consolidated}`)
+        if (outfile) log(`Findings exported to ${outfile}`)
         sariftools.display_totals(summary, args.FORMAT, log)
       }
 
@@ -249,6 +279,7 @@ module.exports = {
     } else {
       exitCode = 0x10
       if (!args.QUIET) log('Scan NOT completed!')
+      if (telemetry.enabled()) telemetry.send(`scans/:scanID/failed`, { scanID })
     }
 
     // Clean up.

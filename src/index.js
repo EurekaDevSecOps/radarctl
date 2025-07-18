@@ -1,10 +1,13 @@
 const { build } = require('@persistr/clif')
 const pkg = require('../package.json')
 const commands = require('./commands')
+const path = require('node:path')
 
 // Plugins.
 const plugins = {
-  settings: require('@persistr/clif-plugin-settings')
+  settings: require('@persistr/clif-plugin-settings'),
+  scanners: require(path.join(__dirname, 'plugins', 'scanners')),
+  telemetry: require(path.join(__dirname, 'plugins', 'telemetry'))
 }
 
 module.exports = {

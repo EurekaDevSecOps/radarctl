@@ -2,8 +2,7 @@
 
 // require('dotenv').config()
 const path = require('node:path')
-const plugins = { scanners: require(path.join(__dirname, 'src', 'plugins', 'scanners')) }
-const cli = require(path.join(__dirname, 'src')).build({ plugins })
+const cli = require(path.join(__dirname, 'src')).build()
 
 // Check for updates (not in browsers).
 cli.checkForUpdates()
