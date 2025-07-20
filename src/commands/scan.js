@@ -20,7 +20,7 @@ module.exports = {
   },
   options: [
     { name: 'CATEGORIES', short: 'c', long: 'categories', type: 'string', description: 'list of scanner categories' },
-    { name: 'ERRORS', short: 'e', long: 'errors', type: 'string', description: 'severities to treat as errors' },
+    { name: 'ESCALATE', short: 'e', long: 'escalate', type: 'string', description: 'severities to treat as high/error' },
     { name: 'FORMAT', short: 'f', long: 'format', type: 'string', description: 'severity format' },
     { name: 'OUTPUT', short: 'o', long: 'output', type: 'string', description: 'output SARIF file' },
     { name: 'QUIET', short: 'q', long: 'quiet', type: 'boolean', description: 'suppress stdout logging' },
@@ -81,10 +81,13 @@ module.exports = {
     '$ radar scan --output=scan.sarif ' + '(save findings in a file)'.grey,
     '$ radar scan -o scan.sarif /my/repo/dir ' + '(short versions of options)'.grey,
     '$ radar scan -s depscan,opengrep ' + '(use only given scanners)'.grey,
-    '$ radar scan -c sca,sast ' + '(use only scanners from given categories)'.grey,
-    '$ radar scan -c sca -s gitleaks ' + '(use gitleaks scanner plus all SCA scanners)'.grey,
-    '$ radar scan -f security ' + '(displays findings as high, medium, and low)'.grey,
-    '$ radar scan -e warning,note ' + '(treat warnings and notes as errors)'.grey
+    '$ radar scan -c sca,sast ' + '(use all scanners from given categories)'.grey,
+    '$ radar scan -c sca,sast -s all ' + '(use all scanners from given categories)'.grey,
+    '$ radar scan -c sast -s opengrep ' + '(use only the opengrep scanner)'.grey,
+    '$ radar scan -f security ' + '(displays findings as high, moderate, and low)'.grey,
+    '$ radar scan -f sarif ' + '(displays findings as error, warning, and note)'.grey,
+    '$ radar scan -e moderate,low ' + '(treat lower severities as high)'.grey,
+    '$ radar scan -f sarif -e warning,note ' + '(treat lower severities as errors)'.grey
   ],
   run: async (toolbox, args) => {
     const { log, scanners: availableScanners, categories: availableCategories, telemetry } = toolbox
@@ -108,6 +111,10 @@ module.exports = {
       if (unknownScanners.length > 1) throw new Error(`Unknown scanners: ${unknownScanners.join(', ')}`)
       else if (unknownScanners.length === 1) throw new Error(`Unknown scanner: ${unknownScanners[0]}`)
     }
+    if (args.ESCALATE) args.ESCALATE.split(',').map(severity => {
+      if (args.FORMAT === 'security' && severity !== 'moderate' && severity !== 'low') throw new Error(`Severity to escalate must be 'moderate' or 'low'`)
+      if (args.FORMAT === 'sarif' && severity !== 'warning' && severity !== 'note') throw new Error(`Severity to escalate must be 'warning' or 'note'`)
+    })
 
     // Derive scan parameters.
     const target = args.TARGET // target to scan
@@ -115,6 +122,11 @@ module.exports = {
     const scanners = availableScanners
         .filter(s => args.SCANNERS.split(',').includes(s.name))
         .filter(s => categories.filter(c => s.categories.includes(c)).length > 0)
+    const escalations = args.ESCALATE?.split(',').map(severity => {
+      if (severity === 'moderate') return 'warning'
+      if (severity === 'low') return 'note'
+      return severity
+    })
     const assets = path.join(__dirname, '..', '..', 'scanners') // scanner assets
     const outdir = fs.mkdtempSync(path.join(os.tmpdir(), 'radar-')) // output directory
     const outfile = args.OUTPUT ? path.resolve(args.OUTPUT) : undefined // output file, if any
