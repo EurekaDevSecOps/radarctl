@@ -59,10 +59,21 @@ const toContentType = (path) => {
 const toBody = (path, body) => {
   if (path === `scans/started`) body = { ...body, timestamp: DateTime.now().toISO(), profile_id: process.env.EUREKA_PROFILE }
   if (path === `scans/:scanID/completed`) body = { ...toFindings(body), timestamp: DateTime.now().toISO(), status: 'success', log: { sizeBytes: 0, warnings: 0, errors: 0, link: 'none' }, params: { id: '' }}
+  if (path === `scans/:scanID/completed`) body = { ...toFindings(body), timestamp: DateTime.now().toISO(), status: 'success', log: { sizeBytes: 0, warnings: 0, errors: 0, link: 'none' }, params: { id: '' }}
   if (path === `scans/:scanID/failed`) body = { ...body, timestamp: DateTime.now().toISO(), status: 'failure', findings: { total: 0, critical: 0, high: 0, med: 0, low: 0 }, log: { sizeBytes: 0, warnings: 0, errors: 0, link: 'none' }, params: { id: '' }}
-  if (path === `scans/:scanID/results`) body = { findings: body.findings /* SARIF */, profileId: process.env.EUREKA_PROFILE, log: Buffer.from(body.log, 'utf8').toString('base64') }
+  if (path === `scans/:scanID/findings`) body = { findings: body /* SARIF */, profileId: process.env.EUREKA_PROFILE }
   return JSON.stringify(body)
 }
+
+const toFindings = (summary) => ({
+  findings: {
+    total: summary.errors.length + summary.warnings.length + summary.notes.length,
+    critical: 0,
+    high: summary.errors.length,
+    med: summary.warnings.length,
+    low: summary.notes.length
+  }
+})
 
 const toFindings = (summary) => ({
   findings: {
