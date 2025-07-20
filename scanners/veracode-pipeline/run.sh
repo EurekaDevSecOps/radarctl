@@ -32,4 +32,4 @@ docker run --rm \
     -e VERACODE_API_KEY_ID="${VERACODE_API_KEY_ID}" \
     -e VERACODE_API_KEY_SECRET="${VERACODE_API_KEY_SECRET}" \
     -e VERACODE_ZIPFILE="${VERACODE_ZIPFILE}" \
-    ghcr.io/eurekadevsecops/veracode-pipeline
+    ghcr.io/eurekadevsecops/veracode-pipeline 2>&1
