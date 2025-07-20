@@ -33,6 +33,8 @@ module.exports = {
 
     Select which scanners to use with the SCANNERS and CATEGORIES options. If
     neither option is specified, all scanners are run.
+    Select which scanners to use with the SCANNERS and CATEGORIES options. If
+    neither option is specified, all scanners are run.
 
     If you want to run all scanners of a certain type, such as SAST, SCA, or DAST,
     use the CATEGORIES option. All scanners are classified into categories and
@@ -46,8 +48,19 @@ module.exports = {
     names passed into the SCANNERS option should match the scanner names returned 
     by the "scanners" command. To select all scanners across selected categories,
     use the value 'all' for SCANNERS. Defaults to 'all'.
+    To select all categories, use the value "all" for CATEGORIES. Defaults to 'all'.
+
+    If you want to limit your scan to a subset of available scanners, provide a 
+    specific list of scanners, comma-separated, in the SCANNERS option. Scanner 
+    names passed into the SCANNERS option should match the scanner names returned 
+    by the "scanners" command. To select all scanners across selected categories,
+    use the value 'all' for SCANNERS. Defaults to 'all'.
 
     You can specify both SCANNERS and CATEGORIES at the same time. This will run
+    only those scanners that match both options. For example, if you specify the
+    SCA category and 'all' for SCANNERS then all scanners in the SCA category will 
+    run. If you specify 'SAST' and 'opengrep,depscan' then only opengrep will run
+    (because depscan is an SCA scanner, not a SAST one).
     only those scanners that match both options. For example, if you specify the
     SCA category and 'all' for SCANNERS then all scanners in the SCA category will 
     run. If you specify 'SAST' and 'opengrep,depscan' then only opengrep will run
@@ -77,27 +90,13 @@ module.exports = {
     '$ radar scan --output=scan.sarif ' + '(save findings in a file)'.grey,
     '$ radar scan -o scan.sarif /my/repo/dir ' + '(short versions of options)'.grey,
     '$ radar scan -s depscan,opengrep ' + '(use only given scanners)'.grey,
-    '$ radar scan -c sca,sast ' + '(use all scanners from given categories)'.grey,
-    '$ radar scan -c sca,sast -s all ' + '(use all scanners from given categories)'.grey,
-    '$ radar scan -c sast -s opengrep ' + '(use only the opengrep scanner)'.grey,
-    '$ radar scan -f security ' + '(displays findings as high, moderate, and low)'.grey,
-    '$ radar scan -f sarif ' + '(displays findings as error, warning, and note)'.grey,
-    '$ radar scan -e moderate,low ' + '(treat lower severities as high)'.grey,
-    '$ radar scan -f sarif -e warning,note ' + '(treat lower severities as errors)'.grey
+    '$ radar scan -c sca,sast ' + '(use only scanners from given categories)'.grey,
+    '$ radar scan -c sca -s gitleaks ' + '(use gitleaks scanner plus all SCA scanners)'.grey,
+    '$ radar scan -f security ' + '(displays findings as high, medium, and low)'.grey,
+    '$ radar scan -e warning,note ' + '(treat warnings and notes as errors)'.grey
   ],
   run: async (toolbox, args) => {
-    const { log, scanners: availableScanners } = toolbox
-    // List of existing scanner categories from toml
-    const availableCategories = Array.from(new Set(availableScanners.flatMap(scnr => scnr.categories)))
-    // Array holding categories selected by user
-    let selectedCategories = []
-    // Store valid/available categories from user input
-    if (args.CATEGORIES) {
-      selectedCategories = args.CATEGORIES
-        .toUpperCase()
-        .split(',')
-        .filter(cat => availableCategories.concat(['ALL']).includes(cat))
-    }
+    const { log, scanners: availableScanners, categories: availableCategories, telemetry } = toolbox
 
     // Set defaults for args and options.
     args.TARGET ??= process.cwd()
@@ -113,18 +112,12 @@ module.exports = {
     // Validate args and options.
     if (!fs.existsSync(args.TARGET)) throw new Error(`Path not found: ${args.TARGET}`)
     if (args.FORMAT !== 'sarif' && args.FORMAT !== 'security') throw new Error('FORMAT must be one of \'sarif\' or \'security\'')
-    if (!selectedCategories.length) throw new Error(`CATEGORIES must be one of '${availableCategories.join("', '")}' or 'all'`)
-    if (!args.SCANNERS && !selectedCategories.length) selectedCategories = ['SAST']
-    if (!args.SCANNERS && selectedCategories.includes('ALL')) selectedCategories = []
     if (args.SCANNERS) {
+      const unknownScanners = args.SCANNERS.split(',').filter(name => !availableScanners.find(s => s.name === name))
       const unknownScanners = args.SCANNERS.split(',').filter(name => !availableScanners.find(s => s.name === name))
       if (unknownScanners.length > 1) throw new Error(`Unknown scanners: ${unknownScanners.join(', ')}`)
       else if (unknownScanners.length === 1) throw new Error(`Unknown scanner: ${unknownScanners[0]}`)
     }
-    if (args.ESCALATE) args.ESCALATE.split(',').map(severity => {
-      if (args.FORMAT === 'security' && severity !== 'moderate' && severity !== 'low') throw new Error(`Severity to escalate must be 'moderate' or 'low'`)
-      if (args.FORMAT === 'sarif' && severity !== 'warning' && severity !== 'note') throw new Error(`Severity to escalate must be 'warning' or 'note'`)
-    })
 
     // Derive scan parameters.
     const target = args.TARGET // target to scan
@@ -132,35 +125,23 @@ module.exports = {
     const scanners = availableScanners
         .filter(s => args.SCANNERS.split(',').includes(s.name))
         .filter(s => categories.filter(c => s.categories.includes(c)).length > 0)
-    const escalations = args.ESCALATE?.split(',').map(severity => {
-      if (severity === 'moderate') return 'warning'
-      if (severity === 'low') return 'note'
-      return severity
-    })
     const assets = path.join(__dirname, '..', '..', 'scanners') // scanner assets
     const tmpdir = fs.mkdtempSync(path.join(os.tmpdir(), 'radar-')) // temporary output directory
     const outfile = args.OUTPUT ? path.resolve(args.OUTPUT) : undefined // output file, if any
 
-    // Select scanners to use.
-    const scanners = availableScanners
+    // Validate scan parameters.
+    if (!categories.length) throw new Error(`CATEGORIES must be one or more of '${availableCategories.join("', '")}', or 'all'`)
+    if (!scanners.length) throw new Error('No available scanners selected.')
 
-      // Filter by scanner names given by the user:
-      .filter(scanner => {
-        if (!args.SCANNERS) return true
-        return args.SCANNERS.split(',').includes(scanner.name)
-      })
-
-      // Filter by scanner categories given by the user:
-      .filter(scanner => {
-        if (!selectedCategories.length) return true
-        for (const category of selectedCategories) {
-          if (scanner.categories.includes(category)) return true
-        }
-        return false
-      })
-
-    // At least one scanner must be selected in order to have a successful scan.
-    if (scanners.length === 0) throw new Error('No available scanners selected.')
+    // Send telemetry: scan started.
+    let scanID = undefined
+    const isTelemetryEnabled = telemetry.enabled()
+    if (isTelemetryEnabled) {
+      // TODO: Should pass scanID to the server; not read it from the server.
+      const response = await telemetry.send(`scans/started`, {}, { scanners: scanners.map((scanner) => scanner.name) })
+      const data = await response.json()
+      scanID = data.scan_id
+    }
 
     // Run scanners.
     log(`Running ${scanners.length} of ${availableScanners.length} scanners:`)
