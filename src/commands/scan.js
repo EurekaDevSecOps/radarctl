@@ -157,22 +157,66 @@ module.exports = {
 
     // Run scanners.
     log(`Running ${scanners.length} of ${availableScanners.length} scanners:`)
-    let results = { /* log, sarif */ }
-    try {
-      // This will run all scanners and return the combined stdout log and SARIF object.
-      results = await runner.run({ scanners, target, assets, outdir: tmpdir, quiet: args.QUIET, log })
-    }
-    catch (error) {
-      log(`\n${error}`)
-      if (!args.QUIET) log('Scan NOT completed!')
-      if (telemetry.enabled()) telemetry.send(`scans/:scanID/failed`, { scanID })
-      fs.rmSync(tmpdir, { recursive: true, force: true }) // Clean up.
-      return 0x10 // exit code
+    for (const scanner of scanners) {
+      let label = scanner.name
+      const spinner = new Spinner()
+      if (!args.QUIET) spinner.start(label)
+
+      const t = performance.now()
+      const interval = setInterval(() => {
+        const t2 = performance.now()
+        label = `${scanner.name} [${humanize.duration(t2 - t)}]`
+        if (!args.QUIET) spinner.update(label)
+      }, 1000) // 1000 milliseconds = 1 second
+
+      try {
+        let cmd = scanner.cmd
+
+        /* eslint-disable no-template-curly-in-string */
+        cmd = cmd.replaceAll('${target}', target)
+        cmd = cmd.replaceAll('${assets}', path.join(assets, scanner.name))
+        cmd = cmd.replaceAll('${output}', outdir)
+        /* eslint-enable no-template-curly-in-string */
+
+        const { stdout } = await exec(cmd)
+        runLog += stdout
+
+        if (!args.QUIET) spinner.success(label)
+      } catch (error) {
+        isScanCompleted = false
+        if (!args.QUIET) spinner.error(label)
+        log(`\n${error}`)
+        if (error.stdout) log(error.stdout)
+        if (error.stderr) log(error.stderr)
+      }
+
+      clearInterval(interval)
     }
 
-    // Transform scan findings: treat warnings and notes as errors, and normalize location paths.
-    if (escalations) results.sarif = SARIF.transforms.escalate(results.sarif, escalations)
-    SARIF.transforms.normalize(results.sarif, target)
+    // Process scan findings.
+    let exitCode = 0
+    if (isScanCompleted) {
+      const consolidated = path.join(outdir, 'scan.sarif')
+
+      // Merge all output SARIF files into one.
+      const all = []
+      for (const scanner of scanners) {
+        all.push(path.join(outdir, `${scanner.name}.sarif`))
+      }
+      await sariftools.merge(all, consolidated)
+
+      // Display findings on stdout or write them to destination SARIF file.
+      let sarif = fs.readFileSync(consolidated, 'utf8')
+
+      // Convert the SARIF file into a JS object.
+      try {
+        sarif = JSON.parse(sarif)
+      } catch (error) {
+        log(`\n${error}`)
+      }
+
+      // Treat warnings and notes as errors.
+      if (escalations) sarif = sariftools.escalate(sarif, escalations)
 
     // Write findings to the destination SARIF file.
     if (outfile) fs.writeFileSync(outfile, JSON.stringify(results.sarif))
