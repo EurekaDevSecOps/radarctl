@@ -1,12 +1,8 @@
-const util = require('node:util')
-const exec = util.promisify(require('node:child_process').exec)
 const fs = require('node:fs')
 const path = require('node:path')
-const { performance } = require('node:perf_hooks')
 const os = require('node:os')
-const { default: Spinner } = require('tiny-spinner')
-const humanize = require('../util/humanize')
-const sariftools = require('../util/sarif')
+const SARIF = require('../util/sarif')
+const runner = require('../util/runner')
 module.exports = {
   summary: 'scan for vulnerabilities',
   args: {
@@ -128,7 +124,7 @@ module.exports = {
       return severity
     })
     const assets = path.join(__dirname, '..', '..', 'scanners') // scanner assets
-    const outdir = fs.mkdtempSync(path.join(os.tmpdir(), 'radar-')) // output directory
+    const tmpdir = fs.mkdtempSync(path.join(os.tmpdir(), 'radar-')) // temporary output directory
     const outfile = args.OUTPUT ? path.resolve(args.OUTPUT) : undefined // output file, if any
 
     // Validate scan parameters.
@@ -140,112 +136,53 @@ module.exports = {
     const isTelemetryEnabled = telemetry.enabled()
     if (isTelemetryEnabled) {
       // TODO: Should pass scanID to the server; not read it from the server.
-      const response = await telemetry.send(`scans/started`, {}, { scanners: scanners.map((scanner) => scanner.name) })
+      const response = await telemetry.send(`scans/started`, {}, { scanners: scanners.map((s) => s.name) })
       const data = await response.json()
       scanID = data.scan_id
     }
 
     // Run scanners.
-    let isScanCompleted = true
-    let runLog = ''
     log(`Running ${scanners.length} of ${availableScanners.length} scanners:`)
-    for (const scanner of scanners) {
-      let label = scanner.name
-      const spinner = new Spinner()
-      if (!args.QUIET) spinner.start(label)
-
-      const t = performance.now()
-      const interval = setInterval(() => {
-        const t2 = performance.now()
-        label = `${scanner.name} [${humanize.duration(t2 - t)}]`
-        if (!args.QUIET) spinner.update(label)
-      }, 1000) // 1000 milliseconds = 1 second
-
-      try {
-        let cmd = scanner.cmd
-
-        /* eslint-disable no-template-curly-in-string */
-        cmd = cmd.replaceAll('${target}', target)
-        cmd = cmd.replaceAll('${assets}', path.join(assets, scanner.name))
-        cmd = cmd.replaceAll('${output}', outdir)
-        /* eslint-enable no-template-curly-in-string */
-
-        const { stdout } = await exec(cmd)
-        runLog += stdout
-
-        if (!args.QUIET) spinner.success(label)
-      } catch (error) {
-        isScanCompleted = false
-        if (!args.QUIET) spinner.error(label)
-        log(`\n${error}`)
-        if (error.stdout) log(error.stdout)
-        if (error.stderr) log(error.stderr)
-      }
-
-      clearInterval(interval)
+    let results = { /* log, sarif */ }
+    try {
+      // This will run all scanners and return the combined stdout log and SARIF object.
+      results = await runner.run({ scanners, target, assets, outdir: tmpdir, quiet: args.QUIET, log })
     }
-
-    // Report error if the scan was not completed.
-    if (!isScanCompleted) {
+    catch (error) {
+      log(`\n${error}`)
       if (!args.QUIET) log('Scan NOT completed!')
       if (telemetry.enabled()) telemetry.send(`scans/:scanID/failed`, { scanID })
-      fs.rmSync(outdir, { recursive: true, force: true }) // Clean up.
+      fs.rmSync(tmpdir, { recursive: true, force: true }) // Clean up.
       return 0x10 // exit code
     }
 
-    // Process scan findings.
-    let exitCode = 0
-
-    // Merge all output SARIF files into one.
-    const consolidated = path.join(outdir, 'scan.sarif')
-    await sariftools.merge(consolidated, scanners.map(s => path.join(outdir, `${s.name}.sarif`)))
-
-    // Convert the SARIF file into a JS object.
-    let sarif = fs.readFileSync(consolidated, 'utf8')
-    try {
-      sarif = JSON.parse(sarif)
-    } catch (error) {
-      log(`\n${error}`)
-    }
-
-    // Treat warnings and notes as errors.
-    if (escalations) sarif = sariftools.escalate(sarif, escalations)
+    // Transform scan findings: treat warnings and notes as errors, and normalize location paths.
+    if (escalations) results.sarif = SARIF.transforms.escalate(results.sarif, escalations)
+    SARIF.transforms.normalize(results.sarif, target)
 
     // Write findings to the destination SARIF file.
-    if (outfile) {
-      fs.writeFileSync(outfile, JSON.stringify(sarif))
-    }
+    if (outfile) fs.writeFileSync(outfile, JSON.stringify(results.sarif))
 
-    // Count findings by severity level.
-    const summary = await sariftools.summarize(sarif, target)
+    // Analyze scan findings: count findings by severity level.
+    const summary = await SARIF.analysis.summarize(results.sarif, target)
 
     // Send telemetry.
     if (isTelemetryEnabled && scanID) {
-      // Scan completed.
-      telemetry.send(`scans/:scanID/completed`, { scanID }, {
-        findings: {
-          total: summary.errors.length + summary.warnings.length + summary.notes.length,
-          critical: 0,
-          high: summary.errors.length,
-          med: summary.warnings.length,
-          low: summary.notes.length
-        }
-      })
-
-      // Send sensitive telemetry: scan log and scan findings.
-      telemetry.sendSensitive(`scans/:scanID/log`, { scanID }, runLog)
-      telemetry.sendSensitive(`scans/:scanID/findings`, { scanID }, { findings: sarif })
+      telemetry.send(`scans/:scanID/completed`, { scanID }, summary)
+      telemetry.sendSensitive(`scans/:scanID/log`, { scanID }, results.log)
+      telemetry.sendSensitive(`scans/:scanID/findings`, { scanID }, results.sarif)
     }
 
     // Display summarized findings.
     if (!args.QUIET) {
       log()
-      sariftools.display_findings(summary, args.FORMAT, log)
+      SARIF.visualizations.display_findings(summary, args.FORMAT, log)
       if (outfile) log(`Findings exported to ${outfile}`)
-      sariftools.display_totals(summary, args.FORMAT, log)
+      SARIF.visualizations.display_totals(summary, args.FORMAT, log)
     }
 
     // Determine the correct exit code.
+    let exitCode = 0
     if (!summary.errors.length && !summary.warnings.length && !summary.notes.length) {
       exitCode = 0
     } else {
@@ -256,7 +193,7 @@ module.exports = {
     }
 
     // Clean up.
-    fs.rmSync(outdir, { recursive: true, force: true })
+    fs.rmSync(tmpdir, { recursive: true, force: true })
 
     return exitCode
   }
