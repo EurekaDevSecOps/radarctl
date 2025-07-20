@@ -13,7 +13,7 @@ module.exports = {
 
 const fs = require('node:fs')
 const path = require('node:path')
-module.exports = async (files, outfile) => {
+module.exports = async (outfile, files) => {
   const sarif = {
     version: '2.1.0',
     $schema: 'https://json.schemastore.org/sarif-2.1.0.json',

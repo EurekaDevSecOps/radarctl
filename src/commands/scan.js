@@ -185,78 +185,74 @@ module.exports = {
       clearInterval(interval)
     }
 
-    // Process scan findings.
-    let exitCode = 0
-    if (isScanCompleted) {
-      const consolidated = path.join(outdir, 'scan.sarif')
-
-      // Merge all output SARIF files into one.
-      const all = []
-      for (const scanner of scanners) {
-        all.push(path.join(outdir, `${scanner.name}.sarif`))
-      }
-      await sariftools.merge(all, consolidated)
-
-      // Display findings on stdout or write them to destination SARIF file.
-      let sarif = fs.readFileSync(consolidated, 'utf8')
-
-      // Convert the SARIF file into a JS object.
-      try {
-        sarif = JSON.parse(sarif)
-      } catch (error) {
-        log(`\n${error}`)
-      }
-
-      // Treat warnings and notes as errors.
-      if (escalations) sarif = sariftools.escalate(sarif, escalations)
-
-      // Write findings to the destination SARIF file.
-      if (outfile) {
-        fs.writeFileSync(outfile, JSON.stringify(sarif))
-      }
-
-      // Count findings by severity level.
-      const summary = await sariftools.summarize(sarif, target)
-
-      // Send telemetry.
-      if (isTelemetryEnabled && scanID) {
-        // Scan completed.
-        telemetry.send(`scans/:scanID/completed`, { scanID }, {
-          findings: {
-            total: summary.errors.length + summary.warnings.length + summary.notes.length,
-            critical: 0,
-            high: summary.errors.length,
-            med: summary.warnings.length,
-            low: summary.notes.length
-          }
-        })
-
-        // Send sensitive telemetry: scan log and scan findings.
-        telemetry.sendSensitive(`scans/:scanID/log`, { scanID }, runLog)
-        telemetry.sendSensitive(`scans/:scanID/findings`, { scanID }, { findings: sarif })
-      }
-
-      // Display summarized findings.
-      if (!args.QUIET) {
-        log()
-        sariftools.display_findings(summary, args.FORMAT, log)
-        if (outfile) log(`Findings exported to ${outfile}`)
-        sariftools.display_totals(summary, args.FORMAT, log)
-      }
-
-      // Determine the correct exit code.
-      if (!summary.errors.length && !summary.warnings.length && !summary.notes.length) {
-        exitCode = 0
-      } else {
-        exitCode = 0x8
-        if (summary.errors.length > 0) exitCode |= 0x1
-        if (summary.warnings.length > 0) exitCode |= 0x2
-        if (summary.notes.length > 0) exitCode |= 0x4
-      }
-    } else {
-      exitCode = 0x10
+    // Report error if the scan was not completed.
+    if (!isScanCompleted) {
       if (!args.QUIET) log('Scan NOT completed!')
       if (telemetry.enabled()) telemetry.send(`scans/:scanID/failed`, { scanID })
+      fs.rmSync(outdir, { recursive: true, force: true }) // Clean up.
+      return 0x10 // exit code
+    }
+
+    // Process scan findings.
+    let exitCode = 0
+
+    // Merge all output SARIF files into one.
+    const consolidated = path.join(outdir, 'scan.sarif')
+    await sariftools.merge(consolidated, scanners.map(s => path.join(outdir, `${s.name}.sarif`)))
+
+    // Convert the SARIF file into a JS object.
+    let sarif = fs.readFileSync(consolidated, 'utf8')
+    try {
+      sarif = JSON.parse(sarif)
+    } catch (error) {
+      log(`\n${error}`)
+    }
+
+    // Treat warnings and notes as errors.
+    if (escalations) sarif = sariftools.escalate(sarif, escalations)
+
+    // Write findings to the destination SARIF file.
+    if (outfile) {
+      fs.writeFileSync(outfile, JSON.stringify(sarif))
+    }
+
+    // Count findings by severity level.
+    const summary = await sariftools.summarize(sarif, target)
+
+    // Send telemetry.
+    if (isTelemetryEnabled && scanID) {
+      // Scan completed.
+      telemetry.send(`scans/:scanID/completed`, { scanID }, {
+        findings: {
+          total: summary.errors.length + summary.warnings.length + summary.notes.length,
+          critical: 0,
+          high: summary.errors.length,
+          med: summary.warnings.length,
+          low: summary.notes.length
+        }
+      })
+
+      // Send sensitive telemetry: scan log and scan findings.
+      telemetry.sendSensitive(`scans/:scanID/log`, { scanID }, runLog)
+      telemetry.sendSensitive(`scans/:scanID/findings`, { scanID }, { findings: sarif })
+    }
+
+    // Display summarized findings.
+    if (!args.QUIET) {
+      log()
+      sariftools.display_findings(summary, args.FORMAT, log)
+      if (outfile) log(`Findings exported to ${outfile}`)
+      sariftools.display_totals(summary, args.FORMAT, log)
+    }
+
+    // Determine the correct exit code.
+    if (!summary.errors.length && !summary.warnings.length && !summary.notes.length) {
+      exitCode = 0
+    } else {
+      exitCode = 0x8
+      if (summary.errors.length > 0) exitCode |= 0x1
+      if (summary.warnings.length > 0) exitCode |= 0x2
+      if (summary.notes.length > 0) exitCode |= 0x4
     }
 
     // Clean up.
