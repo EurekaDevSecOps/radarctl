@@ -208,29 +208,7 @@ module.exports = {
       }
 
       // Treat warnings and notes as errors.
-      if (args.ERRORS) {
-        const levels = args.ERRORS.split(',')
-
-        for (const run of sarif.runs) {
-          if (!run.results) continue
-          for (const result of run.results) {
-            if (levels.includes(result.level)) {
-              result.level = 'error'
-              continue
-            }
-
-            for (const rule of run.tool.driver.rules) {
-              if (rule.id === result.ruleId) {
-                const level = rule.defaultConfiguration.level
-                if (levels.includes(level)) {
-                  rule.defaultConfiguration.level = 'error'
-                }
-                break
-              }
-            }
-          }
-        }
-      }
+      if (escalations) sarif = sariftools.escalate(sarif, escalations)
 
       // Write findings to the destination SARIF file.
       if (outfile) {
