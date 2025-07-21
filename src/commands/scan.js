@@ -183,8 +183,7 @@ module.exports = {
     // Send telemetry.
     if (isTelemetryEnabled && scanID) {
       telemetry.send(`scans/:scanID/completed`, { scanID }, summary)
-      telemetry.sendSensitive(`scans/:scanID/log`, { scanID }, results.log)
-      telemetry.sendSensitive(`scans/:scanID/findings`, { scanID }, results.sarif)
+      telemetry.sendSensitive(`scans/:scanID/results`, { scanID }, { findings: results.sarif, log: results.log })
     }
 
     // Display summarized findings.
