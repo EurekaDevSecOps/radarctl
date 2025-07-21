@@ -12,7 +12,7 @@ radarctl is a command-line interface for Radar, an open-source orchestrator of s
 
 ## Requirements
 
-- Node.js version 22.0.0 or higher
+- Node.js version 22.17.0 or higher
 - Docker
 
 ## Installation
