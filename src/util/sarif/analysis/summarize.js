@@ -5,15 +5,11 @@ module.exports = (sarif, dir) => {
   for (const run of sarif.runs) {
     if (!run.results) continue
     for (const result of run.results) {
-      let file = path.relative('/app', result.locations[0].physicalLocation.artifactLocation.uri)
-      file = path.join(dir, file)
-      file = path.relative(process.cwd(), file)
-
       const finding = {
         tool: run.tool.driver.name,
         message: result.message.text,
         artifact: {
-          name: file,
+          name: result.locations[0].physicalLocation.artifactLocation.uri,
           line: result.locations[0].physicalLocation.region.startLine
         }
       }
