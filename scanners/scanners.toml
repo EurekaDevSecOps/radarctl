@@ -18,3 +18,10 @@ title = "Gitleaks"
 description = "Detect secrets like passwords, API keys, and tokens in source code."
 categories = [ "SAST" ]
 cmd = "${assets}/run.sh ${target} ${assets} ${output}"
+
+[[scanners]]
+name = "veracode-pipeline"
+title = "Veracode"
+description = "Veracode static scan that skips reporting the flaws to the Veracode Platform and performing 'flaw matching'. This means it's faster, and allows concurrent scans."
+categories = [ "SAST" ]
+cmd = "${assets}/run.sh ${target} ${assets} ${output}"
