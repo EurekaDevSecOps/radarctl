@@ -10,6 +10,11 @@
 
 radarctl is a command-line interface for Radar, an open-source orchestrator of security scanners. Radar is part of the Eureka DevSecOps platform.
 
+## Requirements
+
+- Node.js version 22.17.0 or higher
+- Docker
+
 ## Installation
 
 Install the Radar CLI on the command-line using [NPM](https://npmjs.com):
