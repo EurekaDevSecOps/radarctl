@@ -1,7 +1,7 @@
 const package = require('../../package.json')
 const { DateTime } = require("luxon")
 
-const EWA_URL = process.env.EWA_URL ?? 'https://app.eurekadevsecops.com'
+const EWA_URL = process.env.EWA_URL ?? 'https://bff.eurekadevsecops.com/'
 const VDBE_URL = process.env.VDBE_URL ?? 'https://vulns.eurekadevsecops.com'
 
 const USER_AGENT = `Radar/${package.version} (${package.pkgname}@${package.version}; ${process?.platform}-${process?.arch}; ${process?.release?.name}-${process?.version})`
