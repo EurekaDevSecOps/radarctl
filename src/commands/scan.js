@@ -150,9 +150,15 @@ module.exports = {
     const isTelemetryEnabled = telemetry.enabled()
     if (isTelemetryEnabled) {
       // TODO: Should pass scanID to the server; not read it from the server.
-      const response = await telemetry.send(`scans/started`, {}, { scanners: scanners.map((s) => s.name) })
-      const data = await response.json()
-      scanID = data.scan_id
+      try {
+        const res = await telemetry.send(`scans/started`, {}, { scanners: scanners.map((s) => s.name) })
+        if (!res.ok) throw new Error(`[${res.status}] ${res.statusText}: ${await res.text()}`)
+        const data = await res.json()
+        scanID = data.scan_id
+      }
+      catch (error) {
+        log(`WARNING: Telemetry will be skipped for this scan run: ${error.message}\n`)
+      }
     }
 
     // Run scanners.
@@ -165,7 +171,7 @@ module.exports = {
     catch (error) {
       log(`\n${error}`)
       if (!args.QUIET) log('Scan NOT completed!')
-      if (telemetry.enabled()) telemetry.send(`scans/:scanID/failed`, { scanID })
+      if (telemetry.enabled()) await telemetry.send(`scans/:scanID/failed`, { scanID })
       fs.rmSync(tmpdir, { recursive: true, force: true }) // Clean up.
       return 0x10 // exit code
     }
@@ -182,8 +188,8 @@ module.exports = {
 
     // Send telemetry.
     if (isTelemetryEnabled && scanID) {
-      telemetry.send(`scans/:scanID/completed`, { scanID }, summary)
-      telemetry.sendSensitive(`scans/:scanID/results`, { scanID }, { findings: results.sarif, log: results.log })
+      await telemetry.send(`scans/:scanID/completed`, { scanID }, summary)
+      await telemetry.sendSensitive(`scans/:scanID/results`, { scanID }, { findings: results.sarif, log: results.log })
     }
 
     // Display summarized findings.
