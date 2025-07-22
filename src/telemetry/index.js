@@ -22,6 +22,11 @@ const send = async (path, params, body, token) => {
     },
     body: toBody(path, body)
   })
+  .then(async (res) => {
+    // TODO: Display this on stdout only if --debug option is selected on the cmd line.
+    // if (!res.ok) console.log(`POST ${toURL(path, params)} [${res.status}] ${res.statusText}: ${await res.text()}`)
+    return res
+  })
 }
 
 const sendSensitive = async (path, params, body) => {
