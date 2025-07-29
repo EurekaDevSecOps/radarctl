@@ -21,7 +21,6 @@ module.exports = {
     { name: 'OUTPUT', short: 'o', long: 'output', type: 'string', description: 'output SARIF file' },
     { name: 'QUIET', short: 'q', long: 'quiet', type: 'boolean', description: 'suppress stdout logging' },
     { name: 'SCANNERS', short: 's', long: 'scanners', type: 'string', description: 'list of scanners to use' },
-    { name: 'BASELINE', short: 'b', long: 'baseline', type: 'boolean', description: 'enhance vulnerability findings with baseline vulnerability context' }
   ],
   description: `
     Scans a target for vulnerabilities. Defaults to displaying findings on stdout.
@@ -171,23 +170,24 @@ module.exports = {
     if (outfile) fs.writeFileSync(outfile, JSON.stringify(results.sarif))
 
     // Analyze scan findings: count findings by severity level.
-    let summary = await SARIF.analysis.summarize(results.sarif, target)
+    let summary
 
-    // Send telemetry.
     if (isTelemetryEnabled && scanID) {
-      await telemetry.send(`scans/:scanID/completed`, { scanID }, summary)
       await telemetry.sendSensitive(`scans/:scanID/results`, { scanID }, { findings: results.sarif, log: results.log })
 
-      if (args.BASELINE) {
-        log(`\nBaseline scan result analysis enabled\nRetrieving new vulnerability findings report with previous scan context...`)
+      // cloud summary generation
+      const enhancedSummary = await telemetry.receiveSensitive(`scans/:scanID/summary`, { scanID })
 
-        const enhancedSummary = await telemetry.getSensitive(`scans/:scanID/summary?profileId=${process.env.EUREKA_PROFILE}`, { scanID })
-        if (!enhancedSummary?.summary) {
-          throw new Error(`Failed to retrieve enhanced summary for scan ID ${scanID}`)
-        }
-        // Override radar generated summary with baseline summary from vdbe
-        summary = enhancedSummary?.summary?.findingsBySeverity
+      if (!enhancedSummary?.summary) {
+        throw new Error(`Failed to retrieve enhanced summary for scan ID ${scanID}`)
       }
+      
+      summary = enhancedSummary.summary.findingsBySeverity
+    
+      await telemetry.send(`scans/:scanID/completed`, { scanID }, summary)
+    } else {
+      // local radar summary generation
+      summary = await SARIF.analysis.summarize(results.sarif, target)
     }
 
     // Display summarized findings.
