@@ -20,7 +20,7 @@ module.exports = {
     { name: 'FORMAT', short: 'f', long: 'format', type: 'string', description: 'severity format' },
     { name: 'OUTPUT', short: 'o', long: 'output', type: 'string', description: 'output SARIF file' },
     { name: 'QUIET', short: 'q', long: 'quiet', type: 'boolean', description: 'suppress stdout logging' },
-    { name: 'SCANNERS', short: 's', long: 'scanners', type: 'string', description: 'list of scanners to use' },
+    { name: 'SCANNERS', short: 's', long: 'scanners', type: 'string', description: 'list of scanners to use' }
   ],
   description: `
     Scans a target for vulnerabilities. Defaults to displaying findings on stdout.
@@ -183,25 +183,24 @@ module.exports = {
     // Write findings to the destination SARIF file.
     if (outfile) fs.writeFileSync(outfile, JSON.stringify(results.sarif))
 
-    // Analyze scan findings: count findings by severity level.
-    let summary
-
+    // Send telemetry: scan results.
     if (isTelemetryEnabled && scanID) {
       await telemetry.sendSensitive(`scans/:scanID/results`, { scanID }, { findings: results.sarif, log: results.log })
+    }
 
-      // cloud summary generation
-      const enhancedSummary = await telemetry.receiveSensitive(`scans/:scanID/summary`, { scanID })
-
-      if (!enhancedSummary?.summary) {
-        throw new Error(`Failed to retrieve enhanced summary for scan ID ${scanID}`)
-      }
-      
-      summary = enhancedSummary.summary.findingsBySeverity
-    
-      await telemetry.send(`scans/:scanID/completed`, { scanID }, summary)
+    // Analyze scan results: group findings by severity level.
+    let summary
+    if (isTelemetryEnabled && scanID) {
+      const analysis = await telemetry.receiveSensitive(`scans/:scanID/summary`, { scanID })
+      if (!analysis?.summary) throw new Error(`Failed to retrieve analysis summary for scan '${scanID}'`)
+      summary = analysis.summary.findingsBySeverity
     } else {
-      // local radar summary generation
       summary = await SARIF.analysis.summarize(results.sarif, target)
+    }
+
+    // Send telemetry: scan summary.
+    if (isTelemetryEnabled && scanID) {
+      await telemetry.send(`scans/:scanID/completed`, { scanID }, summary)
     }
 
     // Display summarized findings.
