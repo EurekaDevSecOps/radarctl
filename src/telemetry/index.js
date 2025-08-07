@@ -11,8 +11,26 @@ const enabled = () => {
   return false
 }
 
+const receive = async (path, params, token) => {
+  return fetch(toReceiveURL(path, params), {
+    method: 'GET',
+    headers: {
+      'Authorization': `Bearer ${token ?? process.env.EUREKA_AGENT_TOKEN}`,
+      'User-Agent': USER_AGENT,
+      'Accept': 'application/json'
+    }
+  }).then(async (res) => {    
+      const responseJson = await res.json();
+      return responseJson;
+    })
+  }
+
+const receiveSensitive = async (path, params) => {
+  return receive(path, params, await token())
+}
+
 const send = async (path, params, body, token) => {
-  return fetch(toURL(path, params), {
+  return fetch(toPostURL(path, params), {
     method: 'POST',
     headers: {
       'Authorization': `Bearer ${token ?? process.env.EUREKA_AGENT_TOKEN}`,
@@ -48,12 +66,17 @@ const token = async () => {
   return data.token
 }
 
-const toURL = (path, params) => {
+const toPostURL = (path, params) => {
   if (path === `scans/started`) return `${EWA_URL}/scans/started`
   if (path === `scans/:scanID/completed`) return `${EWA_URL}/scans/${params.scanID}/completed`
   if (path === `scans/:scanID/failed`) return `${EWA_URL}/scans/${params.scanID}/completed`
   if (path === `scans/:scanID/results`) return `${VDBE_URL}/scans/${params.scanID}/results`
-  throw new Error(`Internal Error: Unknown telemetry event: ${path}`)
+  throw new Error(`Internal Error: Unknown telemetry event: POST ${path}`)
+}
+
+const toReceiveURL = (path, params) => {
+  if (path === `scans/:scanID/summary`) return `${VDBE_URL}/scans/${params.scanID}/summary?profileId=${process.env.EUREKA_PROFILE}`
+  throw new Error(`Internal Error: Unknown telemetry event: GET ${path}`)
 }
 
 const toContentType = (path) => {
@@ -81,6 +104,8 @@ const toFindings = (summary) => ({
 
 module.exports = {
   enabled,
+  receive, 
+  receiveSensitive,
   send,
   sendSensitive
 }

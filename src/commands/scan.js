@@ -169,13 +169,24 @@ module.exports = {
     // Write findings to the destination SARIF file.
     if (outfile) fs.writeFileSync(outfile, JSON.stringify(results.sarif))
 
-    // Analyze scan findings: count findings by severity level.
-    const summary = await SARIF.analysis.summarize(results.sarif, target)
+    // Send telemetry: scan results.
+    if (isTelemetryEnabled && scanID) {
+      await telemetry.sendSensitive(`scans/:scanID/results`, { scanID }, { findings: results.sarif, log: results.log })
+    }
 
-    // Send telemetry.
+    // Analyze scan results: group findings by severity level.
+    let summary
+    if (isTelemetryEnabled && scanID) {
+      const analysis = await telemetry.receiveSensitive(`scans/:scanID/summary`, { scanID })
+      if (!analysis?.summary) throw new Error(`Failed to retrieve analysis summary for scan '${scanID}'`)
+      summary = analysis.summary.findingsBySeverity
+    } else {
+      summary = await SARIF.analysis.summarize(results.sarif, target)
+    }
+
+    // Send telemetry: scan summary.
     if (isTelemetryEnabled && scanID) {
       await telemetry.send(`scans/:scanID/completed`, { scanID }, summary)
-      await telemetry.sendSensitive(`scans/:scanID/results`, { scanID }, { findings: results.sarif, log: results.log })
     }
 
     // Display summarized findings.
