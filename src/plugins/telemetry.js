@@ -1,6 +1,6 @@
-const telemetry = require('../telemetry')
+const { Telemetry } = require('../telemetry')
 module.exports = {
   toolbox: {
-    telemetry
+    telemetry: new Telemetry()
   }
 }
