@@ -147,8 +147,7 @@ module.exports = {
 
     // Send telemetry: scan started.
     let scanID = undefined
-    const isTelemetryEnabled = telemetry.enabled()
-    if (isTelemetryEnabled) {
+    if (telemetry.enabled) {
       // TODO: Should pass scanID to the server; not read it from the server.
       try {
         const res = await telemetry.send(`scans/started`, {}, { scanners: scanners.map((s) => s.name) })
@@ -171,7 +170,7 @@ module.exports = {
     catch (error) {
       log(`\n${error}`)
       if (!args.QUIET) log('Scan NOT completed!')
-      if (telemetry.enabled()) await telemetry.send(`scans/:scanID/failed`, { scanID })
+      if (telemetry.enabled) await telemetry.send(`scans/:scanID/failed`, { scanID })
       fs.rmSync(tmpdir, { recursive: true, force: true }) // Clean up.
       return 0x10 // exit code
     }
@@ -184,13 +183,13 @@ module.exports = {
     if (outfile) fs.writeFileSync(outfile, JSON.stringify(results.sarif))
 
     // Send telemetry: scan results.
-    if (isTelemetryEnabled && scanID) {
+    if (telemetry.enabled && scanID) {
       await telemetry.sendSensitive(`scans/:scanID/results`, { scanID }, { findings: results.sarif, log: results.log })
     }
 
     // Analyze scan results: group findings by severity level.
     let summary
-    if (isTelemetryEnabled && scanID) {
+    if (telemetry.enabled && scanID) {
       const analysis = await telemetry.receiveSensitive(`scans/:scanID/summary`, { scanID })
       if (!analysis?.summary) throw new Error(`Failed to retrieve analysis summary for scan '${scanID}'`)
       summary = analysis.summary.findingsBySeverity
@@ -199,7 +198,7 @@ module.exports = {
     }
 
     // Send telemetry: scan summary.
-    if (isTelemetryEnabled && scanID) {
+    if (telemetry.enabled && scanID) {
       await telemetry.send(`scans/:scanID/completed`, { scanID }, summary)
     }
 
