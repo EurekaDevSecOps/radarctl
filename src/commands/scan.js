@@ -1,3 +1,4 @@
+const crypto = require('node:crypto')
 const fs = require('node:fs')
 const path = require('node:path')
 const os = require('node:os')
@@ -124,7 +125,9 @@ module.exports = {
       return severity
     })
     const assets = path.join(__dirname, '..', '..', 'scanners') // scanner assets
-    const tmpdir = fs.mkdtempSync(path.join(os.tmpdir(), 'radar-')) // temporary output directory
+    const scansdir = path.join(os.homedir(), '.radar', 'scans')
+    const tmpdir = path.join(scansdir, crypto.randomUUID()) // temporary output directory
+    fs.mkdirSync(tmpdir, { recursive: true })
     const outfile = args.OUTPUT ? path.resolve(args.OUTPUT) : undefined // output file, if any
 
     // Validate scan parameters.
