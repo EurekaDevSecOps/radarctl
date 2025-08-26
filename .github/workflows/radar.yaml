@@ -39,7 +39,7 @@ jobs:
         run: npm i -g @eurekadevsecops/radar
 
       - name: Verify Radar install
-        run: radar scanners
+        run: radar && radar scanners
 
       - name: Run Radar scan
         run: radar scan
