@@ -6,3 +6,4 @@
 set -e
 docker run --rm -v $1:/app -v $2:/input -v $3:/output ghcr.io/eurekadevsecops/radar-depscan 2>&1
 cp $3/depscan/depscan.sarif $3/depscan.sarif
+rm -rf $3/depscan/
