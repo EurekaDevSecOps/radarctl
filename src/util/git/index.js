@@ -1,5 +1,5 @@
 const { execSync } = require('node:child_process')
-const GitUrlParse = require('git-url-parse')
+const hostedGitInfo = require('hosted-git-info')
 
 function metadata() {
   try {
@@ -11,7 +11,8 @@ function metadata() {
 
     // Get the repo name and owner.
     const originUrl = execSync('git config --get remote.origin.url').toString().trim()
-    const urlParts = GitUrlParse(originUrl)
+    const info = hostedGitInfo.fromUrl(originUrl, { noGitPlus: true })
+    const ownerPath = info.user.split('/')
 
     // Get the branch name.
     const branch = execSync('git rev-parse --abbrev-ref HEAD').toString().trim()
@@ -32,6 +33,16 @@ function metadata() {
     contributors = '[' + contributors.split('\n').join(',') + ']'
     contributors = JSON.parse(contributors)
 
+    const script = `MAX_LENGTH=4;
+git rev-list --abbrev=4 --abbrev-commit --all | \
+  ( while read -r line; do
+      if [ \${#line} -gt $MAX_LENGTH ]; then
+        MAX_LENGTH=\${#line};
+      fi
+    done && printf %s\\\\n "$MAX_LENGTH"
+  )`
+    const abbrevs = execSync(script).toString().trim()
+
 /*
     // Get the total lines of code in the repo.
     const loc = execSync('git ls-files -z ${1} | xargs -0 cat | wc -l').toString().trim()
@@ -40,17 +51,27 @@ function metadata() {
     // Return the repo metadata.
     return {
       type: 'git',
-      source: urlParts.source,
-      name: urlParts.name,
-      owner: urlParts.owner,
-      branch,
+      repo: {
+        url: {
+          origin: originUrl,
+          https: info.https()
+        },
+        source: {
+          type: info.type,
+          domain: info.domain
+        },
+        owner: ownerPath[0],
+        path: ownerPath.slice(1).join('/'),
+        name: info.project,
+        abbrevs,
+        contributors
+      },
       commit: {
         id: fullCommitId,
-        short: shortCommitId,
         time: commitTime,
-      },
-      tags,
-      contributors
+        branch,
+        tags
+      }
     }
   } catch (error) {
     return {
