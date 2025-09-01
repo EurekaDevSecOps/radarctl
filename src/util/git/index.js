@@ -41,7 +41,7 @@ git rev-list --abbrev=4 --abbrev-commit --all | \
       fi
     done && printf %s\\\\n "$MAX_LENGTH"
   )`
-    const abbrevs = execSync(script).toString().trim()
+    const abbrevs = Number(execSync(script).toString().trim())
 
 /*
     // Get the total lines of code in the repo.
