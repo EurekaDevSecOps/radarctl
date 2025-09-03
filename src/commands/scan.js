@@ -152,6 +152,7 @@ module.exports = {
     // Send telemetry: git metadata.
     if (telemetry.enabled && scanID) {
       const metadata = git.metadata()
+      await telemetry.send(`scans/:scanID/metadata`, { scanID }, { metadata })
       await telemetry.sendSensitive(`scans/:scanID/metadata`, { scanID }, { metadata })
     }
 

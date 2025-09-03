@@ -103,7 +103,7 @@ class Telemetry {
     if (path === `scans/started`) body = { ...body, timestamp: DateTime.now().toISO(), profile_id: process.env.EUREKA_PROFILE }
     if (path === `scans/:scanID/completed`) body = { ...this.#toFindings(body), timestamp: DateTime.now().toISO(), status: 'success', log: { sizeBytes: 0, warnings: 0, errors: 0, link: 'none' }, params: { id: '' }}
     if (path === `scans/:scanID/failed`) body = { ...body, timestamp: DateTime.now().toISO(), status: 'failure', findings: { total: 0, critical: 0, high: 0, med: 0, low: 0 }, log: { sizeBytes: 0, warnings: 0, errors: 0, link: 'none' }, params: { id: '' }}
-    if (path === `scans/:scanID/metadata`) body = { metadata: body.metadata /* SARIF */, profileId: process.env.EUREKA_PROFILE }
+    if (path === `scans/:scanID/metadata`) body = { metadata: body.metadata, profileId: process.env.EUREKA_PROFILE }
     if (path === `scans/:scanID/results`) body = { findings: body.findings /* SARIF */, profileId: process.env.EUREKA_PROFILE, log: Buffer.from(body.log, 'utf8').toString('base64') }
     return JSON.stringify(body)
   }
