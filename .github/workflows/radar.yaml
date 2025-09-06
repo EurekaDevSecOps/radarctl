@@ -12,7 +12,6 @@ jobs:
     # Radar scanner repo: https://github.com/EurekaDevSecOps/radarctl
     name: Radar Scan
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
@@ -42,4 +41,7 @@ jobs:
         run: radar && radar scanners
 
       - name: Run Radar scan
+        env:
+          EUREKA_PROFILE: ${{ vars.EUREKA_PROFILE }}
+          EUREKA_AGENT_TOKEN: ${{ secrets.EUREKA_AGENT_TOKEN }}
         run: radar scan
