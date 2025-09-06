@@ -1,0 +1,47 @@
+name: Eureka Radar
+
+on:
+  workflow_dispatch:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+    branches:
+      - main
+
+jobs:
+  radar_scan:
+    # Radar scanner repo: https://github.com/EurekaDevSecOps/radarctl
+    name: Radar Scan
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      # Cache npm's download cache to speed up global installs
+      - name: Get npm cache directory
+        id: npm-cache-dir
+        run: echo "dir=$(npm config get cache)" >> "$GITHUB_OUTPUT"
+
+      - name: Cache npm cache
+        uses: actions/cache@v4
+        with:
+          path: ${{ steps.npm-cache-dir.outputs.dir }}
+          key: ${{ runner.os }}-npm-radar-cache-v1
+          restore-keys: |
+            ${{ runner.os }}-npm-radar-cache-
+
+      - name: Install Radar CLI
+        run: npm i -g @eurekadevsecops/radar
+
+      - name: Verify Radar install
+        run: radar && radar scanners
+
+      - name: Run Radar scan
+        env:
+          EUREKA_PROFILE: ${{ vars.EUREKA_PROFILE }}
+          EUREKA_AGENT_TOKEN: ${{ secrets.EUREKA_AGENT_TOKEN }}
+        run: radar scan
