@@ -196,7 +196,7 @@ module.exports = {
       log()
       SARIF.visualizations.display_findings(summary, args.FORMAT, log)
       if (outfile) log(`Findings exported to ${outfile}`)
-      SARIF.visualizations.display_totals(summary, args.FORMAT, log)
+      SARIF.visualizations.display_totals(summary, args.FORMAT, log, telemetry.enabled && scanID)
     }
 
     // Determine the correct exit code.
