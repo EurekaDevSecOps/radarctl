@@ -180,8 +180,8 @@ module.exports = {
     let summary
     if (telemetry.enabled && scanID) {
       const analysis = await telemetry.receiveSensitive(`scans/:scanID/summary`, { scanID })
-      if (!analysis?.summary) throw new Error(`Failed to retrieve analysis summary for scan '${scanID}'`)
-      summary = analysis.summary.findingsBySeverity
+      if (!analysis?.findingsBySeverity) throw new Error(`Failed to retrieve analysis summary for scan '${scanID}'`)
+      summary = analysis.findingsBySeverity
     } else {
       summary = await SARIF.analysis.summarize(results.sarif, target)
     }
