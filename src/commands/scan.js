@@ -224,6 +224,11 @@ module.exports = {
       if (summary.notes.length > 0) exitCode |= 0x4
     }
 
+    // Display the exit code.
+    if (!args.QUIET && exitCode !== 0) {
+      log(`Terminating with exit code ${exitCode}. See 'radar help scan' for list of possible exit codes.`)
+    }
+
     // Clean up.
     fs.rmSync(tmpdir, { recursive: true, force: true })
 
