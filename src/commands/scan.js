@@ -87,7 +87,7 @@ module.exports = {
     '$ radar scan -f sarif -e warning,note ' + '(treat lower severities as errors)'.grey
   ],
   run: async (toolbox, args) => {
-    const { log, scanners: availableScanners, categories: availableCategories, telemetry } = toolbox
+    const { log, scanners: availableScanners, categories: availableCategories, telemetry, git } = toolbox
 
     // Set defaults for args and options.
     args.TARGET ??= process.cwd()
@@ -147,6 +147,13 @@ module.exports = {
       catch (error) {
         log(`WARNING: Telemetry will be skipped for this scan run: ${error.message}\n`)
       }
+    }
+
+    // Send telemetry: git metadata.
+    if (telemetry.enabled && scanID) {
+      const metadata = git.metadata()
+      await telemetry.send(`scans/:scanID/metadata`, { scanID }, { metadata })
+      await telemetry.sendSensitive(`scans/:scanID/metadata`, { scanID }, { metadata })
     }
 
     // Run scanners.
