@@ -4,7 +4,7 @@ const { jwtDecode } = require('jwt-decode')
 
 class Telemetry {
   #EUREKA_AGENT_TOKEN = process.env.EUREKA_AGENT_TOKEN
-  #USER_AGENT = `RadarCLI/${pkg.version} (${pkg.pkgname}@${pkg.version}; ${process?.platform}-${process?.arch}; ${process?.release?.name}-${process?.version})`
+  #USER_AGENT = `RadarCLI/${pkg.version} (${pkg.name}@${pkg.version}; ${process?.platform}-${process?.arch}; ${process?.release?.name}-${process?.version})`
   #EWA_URL
 
   constructor() {
