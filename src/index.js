@@ -6,6 +6,7 @@ const path = require('node:path')
 // Plugins.
 const plugins = {
   settings: require('@persistr/clif-plugin-settings'),
+  git: require(path.join(__dirname, 'plugins', 'git')),
   scanners: require(path.join(__dirname, 'plugins', 'scanners')),
   telemetry: require(path.join(__dirname, 'plugins', 'telemetry'))
 }
