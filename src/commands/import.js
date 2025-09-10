@@ -69,7 +69,7 @@ module.exports = {
     if (!args.QUIET && !telemetry.enabled) {
       log(`ERROR: Telemetry not enabled.`)
       log(`Terminating with exit code 16. See 'radar help import' for list of possible exit codes.`)
-      return 16 // exit code
+      return 0x10 // exit code
     }
 
     // Results include the log and the SARIF findings.
@@ -92,7 +92,7 @@ module.exports = {
     catch (error) {
       log(`ERROR: ${error.message}`)
       log(`Terminating with exit code 1. See 'radar help import' for list of possible exit codes.`)
-      return 1 // exit code
+      return 0x1 // exit code
     }
 
     // Send telemetry: scan started.
@@ -107,7 +107,7 @@ module.exports = {
     catch (error) {
       log(`ERROR: ${error.message}${error?.cause?.code === 'ECONNREFUSED' ? ': CONNECTION REFUSED' : ''}`)
       log(`Terminating with exit code 16. See 'radar help import' for list of possible exit codes.`)
-      return 16 // exit code
+      return 0x10 // exit code
     }
 
     // Transform scan findings: treat warnings and notes as errors, and normalize location paths.
