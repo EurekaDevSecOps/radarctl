@@ -1,6 +1,6 @@
 {
   "name": "@eurekadevsecops/radar",
-  "version": "1.4.6",
+  "version": "1.5.0",
   "description": "Radar is an open-source orchestrator of security scanners.",
   "homepage": "https://www.eurekadevsecops.com/radar",
   "keywords": [
