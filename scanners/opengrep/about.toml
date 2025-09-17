@@ -1,0 +1,5 @@
+name = "opengrep"
+title = "Opengrep"
+description = "Ultra-fast static analysis tool."
+categories = [ "SAST" ]
+cmd = "${assets}/run.sh ${target} ${assets} ${output}"

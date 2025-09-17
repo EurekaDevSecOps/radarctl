@@ -1,0 +1,5 @@
+name = "depscan"
+title = "OWASP dep-scan"
+description = "Next-generation security and risk audit tool."
+categories = [ "SCA" ]
+cmd = "${assets}/run.sh ${target} ${assets} ${output}"
