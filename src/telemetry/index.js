@@ -9,7 +9,7 @@ class Telemetry {
 
   constructor() {
     this.enabled = !!this.#EUREKA_AGENT_TOKEN
-    this.#EWA_URL = this.#claims(this.#EUREKA_AGENT_TOKEN).aud
+    this.#EWA_URL = this.#claims(this.#EUREKA_AGENT_TOKEN).aud.replace(/\/$/, '')
   }
 
   async send(path, params, body, token) {
@@ -80,17 +80,19 @@ class Telemetry {
 
   #toPostURL(path, params, token) {
     const claims = this.#claims(token ?? this.#EUREKA_AGENT_TOKEN)
-    if (path === `scans/started`) return `${claims.aud}/scans/started`
-    if (path === `scans/:scanID/completed`) return `${claims.aud}/scans/${params.scanID}/completed`
-    if (path === `scans/:scanID/failed`) return `${claims.aud}/scans/${params.scanID}/completed`
-    if (path === `scans/:scanID/metadata`) return `${claims.aud}/scans/${params.scanID}/metadata`
-    if (path === `scans/:scanID/results`) return `${claims.aud}/scans/${params.scanID}/results`
+    const aud = claims.aud.replace(/\/$/, '')
+    if (path === `scans/started`) return `${aud}/scans/started`
+    if (path === `scans/:scanID/completed`) return `${aud}/scans/${params.scanID}/completed`
+    if (path === `scans/:scanID/failed`) return `${aud}/scans/${params.scanID}/completed`
+    if (path === `scans/:scanID/metadata`) return `${aud}/scans/${params.scanID}/metadata`
+    if (path === `scans/:scanID/results`) return `${aud}/scans/${params.scanID}/results`
     throw new Error(`Internal Error: Unknown telemetry event: POST ${path}`)
   }
 
   #toReceiveURL(path, params, token) {
     const claims = this.#claims(token ?? this.#EUREKA_AGENT_TOKEN)
-    if (path === `scans/:scanID/summary`) return `${claims.aud}/scans/${params.scanID}/summary?profileId=${process.env.EUREKA_PROFILE}`
+    const aud = claims.aud.replace(/\/$/, '')
+    if (path === `scans/:scanID/summary`) return `${aud}/scans/${params.scanID}/summary?profileId=${process.env.EUREKA_PROFILE}`
     throw new Error(`Internal Error: Unknown telemetry event: GET ${path}`)
   }
 
