@@ -8,12 +8,14 @@ module.exports = (sarif, escalations) => {
         continue
       }
 
-      for (const rule of run.tool.driver.rules) {
-        if (rule.id === result.ruleId) {
-          if (escalations.includes(rule.defaultConfiguration?.level)) {
-            rule.defaultConfiguration.level = 'error'
+      if (Array.isArray(run?.tool?.driver?.rules)) {
+        for (const rule of run.tool.driver.rules) {
+          if (rule.id === result.ruleId) {
+            if (escalations.includes(rule.defaultConfiguration?.level)) {
+              rule.defaultConfiguration.level = 'error'
+            }
+            break
           }
-          break
         }
       }
     }

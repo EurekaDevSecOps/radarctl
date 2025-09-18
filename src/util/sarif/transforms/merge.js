@@ -41,9 +41,11 @@ module.exports = async (outfile, files) => {
         rules.set(result.ruleId, true)
       }
 
-      for (const rule of run.tool.driver.rules) {
-        if (rules.has(rule.id)) {
-          tool.driver.rules.push(rule)
+      if (Array.isArray(run?.tool?.driver?.rules)) {
+        for (const rule of run.tool.driver.rules) {
+          if (rules.has(rule.id)) {
+            tool.driver.rules.push(rule)
+          }
         }
       }
 
