@@ -10,9 +10,14 @@ module.exports = (sarif, dir) => {
 
       // Make all physical locations for the result relative to the scan directory.
       for (const location of result.locations) {
-        if (!location.physicalLocation?.artifactLocation?.uri?.startsWith('/app')) continue
-        let file = path.relative('/app', location.physicalLocation.artifactLocation.uri)
-        location.physicalLocation.artifactLocation.uri = file
+        if (location.physicalLocation?.artifactLocation?.uri?.startsWith('/app')) {
+          let file = path.relative('/app', location.physicalLocation.artifactLocation.uri)
+          location.physicalLocation.artifactLocation.uri = file
+        }
+        else if (location.physicalLocation?.artifactLocation?.uri?.startsWith('/')) {
+          let file = path.relative('/', location.physicalLocation.artifactLocation.uri)
+          location.physicalLocation.artifactLocation.uri = file
+        }
       }
 
     }
