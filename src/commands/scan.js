@@ -164,8 +164,8 @@ module.exports = {
     }
 
     // Send telemetry: git metadata.
+    const metadata = git.metadata(target)
     if (telemetry.enabled && scanID) {
-      const metadata = git.metadata(target)
       await telemetry.send(`scans/:scanID/metadata`, { scanID }, { metadata })
       await telemetry.sendSensitive(`scans/:scanID/metadata`, { scanID }, { metadata })
     }
@@ -187,7 +187,7 @@ module.exports = {
 
     // Transform scan findings: treat warnings and notes as errors, and normalize location paths.
     if (escalations) results.sarif = SARIF.transforms.escalate(results.sarif, escalations)
-    SARIF.transforms.normalize(results.sarif, target)
+    SARIF.transforms.normalize(results.sarif, target, metadata, git.root(target))
 
     // Write findings to the destination SARIF file.
     if (outfile) fs.writeFileSync(outfile, JSON.stringify(results.sarif))
