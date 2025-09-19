@@ -84,6 +84,23 @@ git rev-list --abbrev=4 --abbrev-commit --all | \
   }
 }
 
+function root(folder) {
+  try {
+    // Get the full OS path to the root of the repo.
+    const root = execSync('git rev-parse --show-toplevel', { cwd: folder }).toString().trim()
+    return root
+  } catch (error) {
+    return {
+      type: 'error',
+      error: {
+        code: 'E_GIT_METADATA',
+        details: error
+      }
+    }
+  }
+}
+
 module.exports = {
-  metadata
+  metadata,
+  root
 }
