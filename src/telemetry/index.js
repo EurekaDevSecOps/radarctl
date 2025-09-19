@@ -9,7 +9,7 @@ class Telemetry {
 
   constructor() {
     this.enabled = !!this.#EUREKA_AGENT_TOKEN
-    this.#EWA_URL = this.#claims(this.#EUREKA_AGENT_TOKEN).aud.replace(/\/$/, '')
+    this.#EWA_URL = this.#claims(this.#EUREKA_AGENT_TOKEN)?.aud?.replace(/\/$/, '')
   }
 
   async send(path, params, body, token) {
