@@ -1,0 +1,5 @@
+name = "grype"
+title = "Grype"
+description = "A vulnerability scanner for container images and filesystems."
+categories = [ "SCA" ]
+cmd = "${assets}/run.sh ${target} ${assets} ${output}"
