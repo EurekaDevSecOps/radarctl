@@ -4,4 +4,15 @@
 # $3 - Path to the output folder where scan results should be stored
 
 set -e
-docker run --rm -v $1:/app -v $2:/input -v $3:/output ghcr.io/eurekadevsecops/radar-opengrep 2>&1
+
+trap cleanup TERM INT
+
+cleanup()
+{
+  PID=$(cat $3/opengrep.cid)
+  docker stop $PID
+  rm $3/opengrep.cid
+  exit 1
+}
+
+docker run --cidfile $3/opengrep.cid --rm -v $1:/app -v $2:/input -v $3:/output ghcr.io/eurekadevsecops/radar-opengrep 2>&1
