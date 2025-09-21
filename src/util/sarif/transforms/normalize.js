@@ -5,14 +5,18 @@ module.exports = (sarif, dir, git, root) => {
 
     // Record the source repo location and the relative target subfolder within the repo.
     run.originalUriBaseIds = {
-     "SOURCE": {
-        "uri": git.repo.url.https,
-        "description": "Source origin for the target being scanned (ie. git repo URL)."
+     SOURCE: {
+        uri: git.repo.url.https,
+        description: {
+          text: "Source origin for the target being scanned (ie. git repo URL)."
+        }
      },
-      "TARGET": {
-        "uri": `${path.relative(root, dir)}`,
-        "uriBaseId": "SOURCE",
-        "description": "Scan target (subfolder) within the source repo or folder."
+      TARGET: {
+        uri: `${path.relative(root, dir)}`,
+        uriBaseId: "SOURCE",
+        description: {
+          text: "Scan target (subfolder) within the source repo or folder."
+        }
       }
     }
 
