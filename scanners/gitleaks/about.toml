@@ -2,4 +2,5 @@ name = "gitleaks"
 title = "Gitleaks"
 description = "Detect secrets like passwords, API keys, and tokens in source code."
 categories = [ "SAST" ]
+default = true
 cmd = "${assets}/run.sh ${target} ${assets} ${output}"

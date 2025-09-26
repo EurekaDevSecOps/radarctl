@@ -33,7 +33,8 @@ module.exports = {
     a file on disk.
 
     Select which scanners to use with the SCANNERS and CATEGORIES options. If
-    neither option is specified, all scanners are run.
+    neither option is specified, all default scanners are run. You can see which
+    scanners are marked as defaults with the 'radar scanners' command.
 
     If you want to run all scanners of a certain type, such as SAST, SCA, or DAST,
     use the CATEGORIES option. All scanners are classified into categories and
@@ -46,7 +47,7 @@ module.exports = {
     specific list of scanners, comma-separated, in the SCANNERS option. Scanner 
     names passed into the SCANNERS option should match the scanner names returned 
     by the "scanners" command. To select all scanners across selected categories,
-    use the value 'all' for SCANNERS. Defaults to 'all'.
+    use the value 'all' for SCANNERS.
 
     You can specify both SCANNERS and CATEGORIES at the same time. This will run
     only those scanners that match both options. For example, if you specify the
@@ -93,7 +94,7 @@ module.exports = {
     args.TARGET ??= process.cwd()
     args.FORMAT ??= 'security'
     args.CATEGORIES ??= 'all'
-    args.SCANNERS ??= 'all'
+    args.SCANNERS ??= ''
 
     // Normalize and/or rewrite args and options.
     args.TARGET = path.resolve(path.normalize(args.TARGET))
@@ -107,6 +108,9 @@ module.exports = {
       const unknownScanners = args.SCANNERS.split(',').filter(name => !availableScanners.find(s => s.name === name))
       if (unknownScanners.length > 1) throw new Error(`Unknown scanners: ${unknownScanners.join(', ')}`)
       else if (unknownScanners.length === 1) throw new Error(`Unknown scanner: ${unknownScanners[0]}`)
+    }
+    else {
+      args.SCANNERS = availableScanners.filter(s => s.default).map(s => s.name).join(',')
     }
     if (args.ESCALATE) args.ESCALATE.split(',').map(severity => {
       if (args.FORMAT === 'security' && severity !== 'moderate' && severity !== 'low') throw new Error(`Severity to escalate must be 'moderate' or 'low'`)
