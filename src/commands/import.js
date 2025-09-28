@@ -83,18 +83,6 @@ module.exports = {
       scanners.push(scanner)
     }
 
-    // Check for unsupported scanners.
-    try {
-      const unknownScanners = scanners.filter(name => !availableScanners.find(s => s.name === name))
-      if (unknownScanners.length > 1) throw new Error(`Unknown scanners: ${unknownScanners.join(', ')}`)
-      else if (unknownScanners.length === 1) throw new Error(`Unknown scanner: ${unknownScanners[0]}`)
-    }
-    catch (error) {
-      log(`ERROR: ${error.message}`)
-      log(`Terminating with exit code 1. See 'radar help import' for list of possible exit codes.`)
-      return 0x1 // exit code
-    }
-
     // Send telemetry: scan started.
     let scanID = undefined
     // TODO: Should pass scanID to the server; not read it from the server.
