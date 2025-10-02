@@ -185,7 +185,7 @@ module.exports = {
     SARIF.transforms.normalize(results.sarif, target, metadata, git.root(target))
 
     // Write findings to the destination SARIF file.
-    if (outfile) fs.writeFileSync(outfile, JSON.stringify(results.sarif))
+    if (outfile) fs.writeFileSync(outfile, JSON.stringify(results.sarif, null, 2))
 
     // Send telemetry: scan results.
     if (telemetry.enabled && scanID) {
