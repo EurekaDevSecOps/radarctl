@@ -49,7 +49,7 @@ git rev-list --abbrev=4 --abbrev-commit --all | \
 */
 
     // Return the repo metadata.
-    return {
+    const metadata = {
       type: 'git',
       repo: {
         url: {
@@ -73,6 +73,21 @@ git rev-list --abbrev=4 --abbrev-commit --all | \
         tags
       }
     }
+
+    // Validate repo metadata.
+    if (!metadata.repo.url.origin) throw new Error('remote.origin.url not present')
+    if (!metadata.repo.url.https) throw new Error('remote.origin.url (https) not present')
+    if (!metadata.repo.source.type) throw new Error('unable to determine repository type')
+    if (!metadata.repo.source.domain) throw new Error('unable to determine repository domain')
+    if (!metadata.repo.owner) throw new Error('unknown repo owner')
+    if (!metadata.repo.name) throw new Error('unknown repo name')
+    if (!metadata.repo.abbrevs) throw new Error('unable to determine number of significant digits for commit IDs')
+    if (!metadata.repo.contributors) throw new Error('no repository contributors present')
+    if (!metadata.commit.id) throw new Error('commit ID not present')
+    if (!metadata.commit.time) throw new Error('commit time not present')
+    if (!metadata.commit.branch) throw new Error('branch not present')
+
+    return metadata
   } catch (error) {
     return {
       type: 'error',

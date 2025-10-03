@@ -27,7 +27,7 @@
     "url": "https://github.com/EurekaDevSecOps/radarctl.git"
   },
   "dependencies": {
-    "@persistr/clif": "^1.11.1",
+    "@persistr/clif": "^1.11.2",
     "@persistr/clif-plugin-settings": "^2.3.1",
     "hosted-git-info": "^9.0.0",
     "humanize-duration": "^3.33.0",
