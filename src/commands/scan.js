@@ -17,6 +17,7 @@ module.exports = {
   },
   options: [
     { name: 'CATEGORIES', short: 'c', long: 'categories', type: 'string', description: 'list of scanner categories' },
+    { name: 'DEBUG', short: 'd', long: 'debug', type: 'boolean', description: 'log detailed debug info to stdout' },
     { name: 'ESCALATE', short: 'e', long: 'escalate', type: 'string', description: 'severities to treat as high/error' },
     { name: 'FORMAT', short: 'f', long: 'format', type: 'string', description: 'severity format' },
     { name: 'OUTPUT', short: 'o', long: 'output', type: 'string', description: 'output SARIF file' },
@@ -75,6 +76,8 @@ module.exports = {
   examples: [
     '$ radar scan ' + '(scan current working directory)'.grey,
     '$ radar scan . ' + '(scan current working directory)'.grey,
+    '$ radar scan -d' + '(turn debug mode on)'.grey,
+    '$ radar scan --debug' + '(turn debug mode on)'.grey,
     '$ radar scan /my/repo/dir ' + '(scan target directory)'.grey,
     '$ radar scan --output=scan.sarif ' + '(save findings in a file)'.grey,
     '$ radar scan -o scan.sarif /my/repo/dir ' + '(short versions of options)'.grey,
@@ -87,8 +90,11 @@ module.exports = {
     '$ radar scan -e moderate,low ' + '(treat lower severities as high)'.grey,
     '$ radar scan -f sarif -e warning,note ' + '(treat lower severities as errors)'.grey
   ],
-  run: async (toolbox, args) => {
+  run: async (toolbox, args, globals) => {
     const { log, scanners: availableScanners, categories: availableCategories, telemetry, git } = toolbox
+
+    // Enable debug mode, if needed.
+    if (args.DEBUG) globals.debug = true
 
     // Set defaults for args and options.
     args.TARGET ??= process.cwd()
@@ -150,14 +156,24 @@ module.exports = {
       }
       catch (error) {
         log(`WARNING: Telemetry will be skipped for this scan run: ${error.message}\n`)
+        if (args.DEBUG) {
+          log(error)
+          if (error?.cause?.code === 'ECONNREFUSED') {
+            log(error.cause.errors)
+            log()
+          }
+        }
       }
     }
 
     // Send telemetry: git metadata.
     const metadata = git.metadata(target)
+    if (metadata.type === 'error') throw new Error(`${metadata.error.code}: ${metadata.error.details}`)
     if (telemetry.enabled && scanID) {
-      await telemetry.send(`scans/:scanID/metadata`, { scanID }, { metadata })
-      await telemetry.sendSensitive(`scans/:scanID/metadata`, { scanID }, { metadata })
+      let res = await telemetry.send(`scans/:scanID/metadata`, { scanID }, { metadata })
+      if (!res.ok) log(`WARNING: Scan metadata (stage 1) telemetry upload failed: [${res.status}] ${res.statusText}: ${await res.text()}`)
+      res = await telemetry.sendSensitive(`scans/:scanID/metadata`, { scanID }, { metadata })
+      if (!res.ok) log(`WARNING: Scan metadata (stage 2) telemetry upload failed: [${res.status}] ${res.statusText}: ${await res.text()}`)
     }
 
     // Run scanners.
@@ -170,7 +186,10 @@ module.exports = {
     catch (error) {
       log(`\n${error}`)
       if (!args.QUIET) log('Scan NOT completed!')
-      if (telemetry.enabled) await telemetry.send(`scans/:scanID/failed`, { scanID })
+      if (telemetry.enabled) {
+        const res = await telemetry.send(`scans/:scanID/failed`, { scanID })
+        if (!res.ok) log(`WARNING: Scan status (not completed) telemetry upload failed: [${res.status}] ${res.statusText}: ${await res.text()}`)
+      }
       fs.rmSync(tmpdir, { recursive: true, force: true }) // Clean up.
       return 0x10 // exit code
     }
@@ -184,7 +203,8 @@ module.exports = {
 
     // Send telemetry: scan results.
     if (telemetry.enabled && scanID) {
-      await telemetry.sendSensitive(`scans/:scanID/results`, { scanID }, { findings: results.sarif, log: results.log })
+      const res = await telemetry.sendSensitive(`scans/:scanID/results`, { scanID }, { findings: results.sarif, log: results.log })
+      if (!res.ok) log(`WARNING: Scan results telemetry upload failed: [${res.status}] ${res.statusText}: ${await res.text()}`)
     }
 
     // Analyze scan results: group findings by severity level.
@@ -199,7 +219,8 @@ module.exports = {
 
     // Send telemetry: scan summary.
     if (telemetry.enabled && scanID) {
-      await telemetry.send(`scans/:scanID/completed`, { scanID }, summary)
+      const res = await telemetry.send(`scans/:scanID/completed`, { scanID }, summary)
+      if (!res.ok) log(`WARNING: Scan status (completed) telemetry upload failed: [${res.status}] ${res.statusText}: ${await res.text()}`)
     }
 
     // Display summarized findings.
