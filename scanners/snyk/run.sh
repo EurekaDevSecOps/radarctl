@@ -42,6 +42,12 @@ fi
 
 SNYK_LANGS_COUNT=$(echo "$SNYK_LANGS" | wc -w | tr -d ' ' | tr -d '\n')
 
+if [[ $SNYK_LANGS_COUNT -eq 0 ]]; then
+    echo "[Snyk] No package files were found in the repo."
+    echo "[Snyk] Exiting..."
+    exit 1
+fi
+
 echo "[Snyk] Discovered ${SNYK_LANGS_COUNT} package files for the following:"
 
 echo $SNYK_LANGS | awk '{for (i=1; i<=NF; i++) print "\t"i") "$i}'
