@@ -18,10 +18,13 @@ if [[ -z "$SNYK_TOKEN" ]]; then
     echo "Missing environment variable SNYK_TOKEN containing Snyk API key"
     exit 1
 fi
-
-DETECT_LANGS_SCRIPT=/tmp/detect-langs.js
-docker run --rm ghcr.io/eurekadevsecops/snyk-helper export-detectlangs > ${DETECT_LANGS_SCRIPT}
-export SNYK_LANGS=$(node ${DETECT_LANGS_SCRIPT} "${APP_DIR}")
+if command -v "node" &>/dev/null; then
+    DETECT_LANGS_SCRIPT=/tmp/detect-langs.js
+    docker run --rm ghcr.io/eurekadevsecops/snyk-helper export-detectlangs > ${DETECT_LANGS_SCRIPT}
+    SNYK_LANGS=$(node ${DETECT_LANGS_SCRIPT} "${APP_DIR}")
+else
+    SNYK_LANGS=$(docker run --rm -v "${APP_DIR}":/tmp/app ghcr.io/eurekadevsecops/snyk-helper detectlangs /tmp/app)
+fi
 
 # Snyk deprecates, but never removes, outdated images. Here we fetch the list of supported images.
 SNYK_IMAGES_ALPINE_URL="https://raw.githubusercontent.com/snyk/snyk-images/refs/heads/master/alpine"
