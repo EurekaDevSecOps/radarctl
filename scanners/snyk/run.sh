@@ -81,4 +81,6 @@ if [[ $SNYK_LANGS_COUNT -gt 1 ]]; then
     echo "[Snyk] Joining results into single file for ingestion."
     
     docker run --rm -v "${OUT_DIR}":/tmp/sarifs ghcr.io/eurekadevsecops/snyk-helper joinsarifs /tmp/sarifs
+else
+    mv $OUT_DIR/*.sarif $OUT_DIR/snyk.sarif
 fi
