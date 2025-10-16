@@ -32,4 +32,5 @@ docker run --rm \
     -e VERACODE_API_KEY_ID="${VERACODE_API_KEY_ID}" \
     -e VERACODE_API_KEY_SECRET="${VERACODE_API_KEY_SECRET}" \
     -e VERACODE_ZIPFILE="${VERACODE_ZIPFILE}" \
+    -e BUILD_DIR="/home/luser/app/${BUILD_DIR}" \
     ghcr.io/eurekadevsecops/veracode-pipeline 2>&1
