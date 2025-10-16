@@ -55,10 +55,6 @@ module.exports = {
     SCA category and 'all' for SCANNERS then all scanners in the SCA category will 
     run. If you specify 'SAST' and 'opengrep,depscan' then only opengrep will run
     (because depscan is an SCA scanner, not a SAST one).
-    only those scanners that match both options. For example, if you specify the
-    SCA category and 'all' for SCANNERS then all scanners in the SCA category will 
-    run. If you specify 'SAST' and 'opengrep,depscan' then only opengrep will run
-    (because depscan is an SCA scanner, not a SAST one).
 
     By default, findings are displayed as high, moderate, and low. This is the
     'security' severity format. Findings can also be displayed as errors, warnings,
@@ -115,7 +111,6 @@ module.exports = {
     if (!fs.existsSync(args.TARGET)) throw new Error(`Path not found: ${args.TARGET}`)
     if (args.FORMAT !== 'sarif' && args.FORMAT !== 'security') throw new Error('FORMAT must be one of \'sarif\' or \'security\'')
     if (args.SCANNERS) {
-      const unknownScanners = args.SCANNERS.split(',').filter(name => !availableScanners.find(s => s.name === name))
       const unknownScanners = args.SCANNERS.split(',').filter(name => !availableScanners.find(s => s.name === name))
       if (unknownScanners.length > 1) throw new Error(`Unknown scanners: ${unknownScanners.join(', ')}`)
       else if (unknownScanners.length === 1) throw new Error(`Unknown scanner: ${unknownScanners[0]}`)
