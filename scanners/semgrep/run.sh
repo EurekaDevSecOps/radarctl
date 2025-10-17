@@ -15,9 +15,8 @@ CFG_DIR=$(cd $2; pwd)
 OUT_DIR=$(cd $3; pwd)
 
 docker run --rm \
-    -v "${APP_DIR}":/src \
+    -v "${APP_DIR}":/home/luser/app \
     -v "${CFG_DIR}":/tmp/radar-input \
     -v "${OUT_DIR}":/tmp/radar-output \
     -e SEMGREP_APP_TOKEN="${SEMGREP_APP_TOKEN}" \
-    semgrep/semgrep \
-    semgrep ci
+    ghcr.io/eurekadevsecops/semgrep
