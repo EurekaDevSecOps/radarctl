@@ -4,7 +4,7 @@
   <img src="assets/radar.png" alt="Eureka Radar Logo" width="320"/>
 </p>
 
-# Eureka Radar CLI
+# Radar CLI by Eureka ASPM
 ### The Unified AppSec Orchestration Tool
 
 ![npm version](https://img.shields.io/npm/v/@eurekadevsecops/radar?color=2b82f6&label=NPM)
@@ -18,7 +18,7 @@
 
 ## Overview
 
-**Eureka Radar CLI** (`radar`) is a developer-friendly command-line tool that orchestrates multiple application security scanners — for code, dependencies, and secrets — in one unified workflow.  
+**Radar CLI** is a developer-friendly command-line tool that orchestrates multiple application security scanners — for code, dependencies, and secrets — in one unified workflow.  
 
 With Radar CLI, you can:
 - Run **SAST**, **SCA**, and **secret scanning** locally or in CI/CD pipelines.
