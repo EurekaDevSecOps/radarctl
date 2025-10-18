@@ -19,12 +19,13 @@
 ## Overview
 
 **Eureka Radar CLI** (`radar`) is a developer-friendly command-line tool that orchestrates multiple application security scanners — for code, dependencies, and secrets — in one unified workflow.  
-It’s part of the **Eureka DevSecOps** platform, designed to make AppSec automation easy for developers and scalable for teams.
 
 With Radar CLI, you can:
 - Run **SAST**, **SCA**, and **secret scanning** locally or in CI/CD pipelines.
 - Generate **unified SARIF reports** compatible with GitHub Advanced Security.
 - Optionally upload results to **Eureka ASPM** for centralized tracking, deduplication, and prioritization.
+
+---
 
 Telemetry is **off by default** — nothing is uploaded unless you explicitly enable it.
 
