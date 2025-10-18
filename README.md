@@ -7,6 +7,8 @@
 # Radar CLI by Eureka ASPM
 ### The Unified AppSec Orchestration Tool
 
+<i>One command. Complete AppSec coverage.</i>
+
 ![npm version](https://img.shields.io/npm/v/@eurekadevsecops/radar?color=2b82f6&label=NPM)
 ![License](https://img.shields.io/github/license/eurekadevsecops/radarctl?color=green)
 ![Node](https://img.shields.io/badge/Node.js-22.x-blue?logo=node.js)
@@ -22,7 +24,7 @@
 
 With Radar CLI, you can:
 - Run **SAST**, **SCA**, and **secret scanning** locally or in CI/CD pipelines.
-- Generate **unified SARIF reports** compatible with GitHub Advanced Security.
+- Generate **unified SARIF reports** compatible with industry-standard security and vulnerability analysis tools.
 - Optionally upload results to **Eureka ASPM** for centralized tracking, deduplication, and prioritization.
 
 ---
@@ -149,16 +151,7 @@ See all findings in one place with deduplication, trend tracking, and risk prior
 export EUREKA_AGENT_TOKEN=<your token>
 export EUREKA_PROFILE=my-service
 
-radar scan -s "opengrep,gitleaks,grype" -o report.sarif --upload
-```
-
-### Upload to GitHub Advanced Security
-
-If your repo uses **GHAS**, Radar’s SARIF output can be uploaded directly:
-
-```bash
 radar scan -s "opengrep,gitleaks,grype" -o report.sarif
-gh code-scanning upload --sarif report.sarif
 ```
 
 ---
@@ -167,9 +160,8 @@ gh code-scanning upload --sarif report.sarif
 
 | Issue                                         | Cause                               | Solution                                                  |
 | --------------------------------------------- | ----------------------------------- | --------------------------------------------------------- |
-| ❌ `report.sarif` not found                    | Scan failed or invalid scanner list | Check scanner names and ensure Docker is running          |
+| ❌ `report.sarif` not found                   | Scan failed or invalid scanner list | Check scanner names and ensure Docker is running          |
 | ⚠️ No findings uploaded                       | Missing or invalid token/profile    | Set `EUREKA_AGENT_TOKEN` and `EUREKA_PROFILE`             |
-| 🚫 “Permission denied” when uploading to GHAS | GHAS not enabled                    | Enable *Code scanning alerts* under **Security** settings |
 | 🧱 `radar: command not found`                 | CLI not installed globally          | Run `npm i -g @eurekadevsecops/radar` again               |
 
 ---
@@ -197,14 +189,14 @@ See our [CONTRIBUTING.md](./CONTRIBUTING.md) for setup and development guideline
 
 ## License
 
-Licensed under the **MIT License** — © Eureka DevSecOps Inc.
+Radar CLI is licensed under the **MIT License** — © Eureka DevSecOps Inc.
 
 ---
 
 ## Support
 
-* 📫 Email: [security@eurekadevsecops.com](mailto:security@eurekadevsecops.com)
-* 🧩 Issues & feature requests: [GitHub Issues](https://github.com/eurekadevsecops/radarctl/issues)
+* Issues & feature requests: [GitHub Issues](https://github.com/eurekadevsecops/radarctl/issues)
+* Security: [security@eurekadevsecops.com](mailto:security@eurekadevsecops.com)
 
 ---
 
