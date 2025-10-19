@@ -4,10 +4,8 @@
   <img src="assets/radar.png" alt="Eureka Radar Logo" width="320"/>
 </p>
 
-# Radar CLI by Eureka ASPM
-### The Unified AppSec Orchestration Tool
-
-<i>One command. Complete AppSec coverage.</i>
+# Radar CLI
+### The Unified AppSec Orchestration Tool<br>One command. Complete AppSec coverage.
 
 ![npm version](https://img.shields.io/npm/v/@eurekadevsecops/radar?color=2b82f6&label=NPM)
 ![License](https://img.shields.io/github/license/eurekadevsecops/radarctl?color=green)
