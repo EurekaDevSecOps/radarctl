@@ -114,19 +114,19 @@ radar scan -s "opengrep,gitleaks,grype" -o report.sarif
 
 ### More on the `radar scan` command
 
-Scans your source code and dependencies for vulnerabilities.
-If no target is specified, the current working directory is scanned.
-
 ```bash
 USAGE
   radar scan [OPTIONS] [TARGET]
 ```
 
+Scans your source code and dependencies for vulnerabilities.
+If no target is specified, the current working directory is scanned.
+
 **OPTIONS**
 
 | Option             | Description                                                                                         |
 | ------------------ | --------------------------------------------------------------------------------------------------- |
-| `-c, --categories` | List of scanner categories (e.g. `sast`, `sca`, `secrets`). Defaults to `all`.                      |
+| `-c, --categories` | List of scanner categories (e.g. `sast`, `sca`, `secrets`).                                         |
 | `-s, --scanners`   | Comma-separated list of scanners to run. Use `radar scanners` to list available ones.               |
 | `-o, --output`     | Output findings into a SARIF file.                                                                  |
 | `-d, --debug`      | Log detailed debug info to stdout.                                                                  |
@@ -158,13 +158,20 @@ USAGE
 You can also **escalate severities**:
 
 ```bash
-radar scan -f sarif -e warning,note
+# Treat moderates and lows as highs
+radar scan -e moderate,low
+```
+
+Or:
+
+```bash
 # Treat warnings and notes as errors
+radar scan -f sarif -e warning,note
 ```
 
 #### Exit Codes
 
-An exit code of `0` means the scan passed with no issues. Any other code means the scan failed — either due to findings or an error.
+An exit code of `0` means the scan passed with no issues. Any other code means the scan failed — either due to new vulnerabilities found or an error during the scanning process.
 
 | Code    | Meaning                                 |
 | ------- | --------------------------------------- |
@@ -215,29 +222,10 @@ Display findings in SARIF-style severities:
 radar scan -f sarif
 ```
 
-Escalate lower severities:
+Treat moderates and lows as highs:
 ```bash
 radar scan -e moderate,low
 ```
-
----
-
-## Telemetry & Privacy
-
-Telemetry is **off by default**.
-Radar does **not** send any data externally unless you explicitly provide:
-
-* `EUREKA_AGENT_TOKEN`
-* `EUREKA_PROFILE`
-
-When provided:
-
-* Findings are securely uploaded to **Eureka ASPM**
-* You gain **dashboards, trend analysis, and contextual prioritization**
-
-When omitted:
-
-* Scans remain **fully local**
 
 ---
 
@@ -264,6 +252,39 @@ radar scan -s "opengrep,gitleaks,grype" -o report.sarif
 
 ---
 
+## Why Upload Findings to Eureka ASPM?
+
+**Eureka ASPM** extends Radar CLI with powerful visibility and collaboration features:
+
+* **Single Source of Truth:** Aggregate findings from all scanners and repos in one place.
+* **Less Noise, More Signal:** Automatically de-duplicate findings and prioritize risks contextually.
+* **Faster Fixes:** See ownership, severity, and remediation guidance for each issue.
+* **Track Progress:** View how your project’s security posture improves over time.
+* **Free for Open Source:** Open source projects get full access at no cost.
+
+**Sign up for a free account at [eurekadevsecops.com](https://eurekadevsecops.com)**
+
+---
+
+## Telemetry & Privacy
+
+Telemetry is **off by default**.
+Radar does **not** send any data externally unless you explicitly provide:
+
+* `EUREKA_AGENT_TOKEN`
+* `EUREKA_PROFILE`
+
+When provided:
+
+* Findings are securely uploaded to **Eureka ASPM**
+* You gain **dashboards, trend analysis, and contextual prioritization**
+
+When omitted:
+
+* Scans remain **fully local**
+
+---
+
 ## 🧰 Troubleshooting
 
 | Issue                                         | Cause                               | Solution                                                  |
@@ -278,20 +299,6 @@ radar scan -s "opengrep,gitleaks,grype" -o report.sarif
 
 Contributions are welcome!
 See our [CONTRIBUTING.md](./CONTRIBUTING.md) for setup and development guidelines.
-
----
-
-## Why Upload Findings to Eureka ASPM?
-
-**Eureka ASPM** extends Radar CLI with powerful visibility and collaboration features:
-
-* **Single Source of Truth:** Aggregate findings from all scanners and repos in one place.
-* **Less Noise, More Signal:** Automatically de-duplicate findings and prioritize risks contextually.
-* **Faster Fixes:** See ownership, severity, and remediation guidance for each issue.
-* **Track Progress:** View how your project’s security posture improves over time.
-* **Free for Open Source:** Open source projects get full access at no cost.
-
-**Sign up for a free account at [eurekadevsecops.com](https://eurekadevsecops.com)**
 
 ---
 
