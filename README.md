@@ -18,7 +18,7 @@
 
 ## Overview
 
-**Radar CLI** is a command-line tool that orchestrates multiple application security scanners — for code, dependencies, and secrets — in one unified package. We've put a lot of effort into making Radar CLI easy to use for developers and easy to integrate into CI/CD pipelines. Check out our accompanying [GitHub action for Radar CLI](https://github.com/EurekaDevSecOps/scan-action).
+**Radar CLI** is a command-line tool that orchestrates multiple application security scanners — for code, dependencies, and secrets — in one unified package. We've put a lot of effort into making Radar CLI easy to use for developers and easy to integrate into CI/CD pipelines. Check out our accompanying [GitHub Action for Radar CLI](https://github.com/EurekaDevSecOps/scan-action).
 
 With Radar CLI, you can:
 - Run **SAST**, **SCA**, and **secret scanning** locally or in CI/CD pipelines.
