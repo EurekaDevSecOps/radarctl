@@ -87,13 +87,13 @@ To scan the current working directory:
 radar scan
 ```
 
-You can also specify scanners:
+You can also specify scanners to use:
 
 ```bash
 radar scan -s "opengrep,gitleaks,grype"
 ```
 
-To output a SARIF report:
+Output a SARIF report:
 
 ```bash
 radar scan -s "opengrep,gitleaks,grype" -o report.sarif
@@ -112,6 +112,116 @@ radar scan -s "opengrep,gitleaks,grype" -o report.sarif
 
 ---
 
+### More on the `radar scan` command
+
+Scans your source code and dependencies for vulnerabilities.
+If no target is specified, the current working directory is scanned.
+
+```bash
+USAGE
+  radar scan [OPTIONS] [TARGET]
+```
+
+**OPTIONS**
+
+| Option             | Description                                                                                         |
+| ------------------ | --------------------------------------------------------------------------------------------------- |
+| `-c, --categories` | List of scanner categories (e.g. `sast`, `sca`, `secrets`). Defaults to `all`.                      |
+| `-s, --scanners`   | Comma-separated list of scanners to run. Use `radar scanners` to list available ones.               |
+| `-o, --output`     | Output findings into a SARIF file.                                                                  |
+| `-d, --debug`      | Log detailed debug info to stdout.                                                                  |
+| `-q, --quiet`      | Suppress stdout logging (except errors).                                                            |
+| `-f, --format`     | Output format for severity display: `security` (high/moderate/low) or `sarif` (error/warning/note). |
+| `-e, --escalate`   | Treat specified lower severities as high (e.g. `--escalate=moderate,low`).                          |
+
+**PARAMETERS**
+
+| Parameter | Description                                             |
+| --------- | ------------------------------------------------------- |
+| `TARGET`  | (Optional) Path to scan. Defaults to current directory. |
+
+#### Category and Scanner Selection
+
+* `--categories` lets you run all scanners in one or more categories.
+  Example: `--categories=sca,sast`
+* `--scanners` lets you choose specific scanners by name.
+  Example: `--scanners=opengrep,depscan`
+* Both can be combined — Radar CLI will run scanners that match *both* filters.
+
+#### Severity Formats
+
+| Format     | Example Severities     |
+| ---------- | ---------------------- |
+| `security` | high / moderate / low  |
+| `sarif`    | error / warning / note |
+
+You can also **escalate severities**:
+
+```bash
+radar scan -f sarif -e warning,note
+# Treat warnings and notes as errors
+```
+
+#### Exit Codes
+
+An exit code of `0` means the scan passed with no issues. Any other code means the scan failed — either due to findings or an error.
+
+| Code    | Meaning                                 |
+| ------- | --------------------------------------- |
+| `0`     | Clean and successful scan.              |
+| `1`     | Invalid command, arguments, or options. |
+| `8–15`  | New vulnerabilities found.              |
+| `>=16`  | Aborted due to unexpected error.        |
+
+#### Examples
+
+Scan current directory:
+```bash
+radar scan
+```
+
+Scan a specific path:
+```bash
+radar scan /my/repo/dir
+```
+
+Save findings into a SARIF file:
+```bash
+radar scan -o scan.sarif
+```
+
+Run only dependency and code scanners:
+```bash
+radar scan -c sca,sast
+```
+
+Run specific scanners:
+```bash
+radar scan -s depscan,opengrep
+```
+
+Enable debug logs:
+```bash
+radar scan --debug
+```
+
+Quiet mode (errors only):
+```bash
+radar scan --quiet
+```
+
+Display findings in SARIF-style severities:
+```bash
+radar scan -f sarif
+```
+
+Escalate lower severities:
+```bash
+radar scan -e moderate,low
+```
+
+---
+
 ## Telemetry & Privacy
 
 Telemetry is **off by default**.
@@ -127,7 +237,7 @@ When provided:
 
 When omitted:
 
-* Scans remain **fully local**, ideal for open source and air-gapped environments
+* Scans remain **fully local**
 
 ---
 
@@ -147,7 +257,7 @@ See all findings in one place with deduplication, trend tracking, and risk prior
 
 ```bash
 export EUREKA_AGENT_TOKEN=<your token>
-export EUREKA_PROFILE=my-service
+export EUREKA_PROFILE=<your profile ID>
 
 radar scan -s "opengrep,gitleaks,grype" -o report.sarif
 ```
