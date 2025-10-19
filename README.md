@@ -196,7 +196,7 @@ radar scan /my/repo/dir
 
 Save findings into a SARIF file:
 ```bash
-radar scan -o scan.sarif
+radar scan -o report.sarif
 ```
 
 Run only dependency and code scanners:
@@ -235,15 +235,15 @@ radar scan -e moderate,low
 
 ### Local Scan (no uploads)
 
-Perfect for open source and private projects — 100% local execution.
+Runs entirely on your machine — by default, Radar CLI doesn’t upload any findings. Your vulnerabilities stay local and private.
 
 ```bash
-radar scan -s "opengrep,gitleaks,grype"
+radar scan -s "opengrep,gitleaks,grype" -o report.sarif
 ```
 
 ### Upload Findings to Eureka ASPM
 
-See all findings in one place with deduplication, trend tracking, and risk prioritization.
+See all findings in one place with deduplication, trend tracking, and risk prioritization. To upload results to **Eureka ASPM**, provide your API credentials via two environment variables: `EUREKA_AGENT_TOKEN` (your API token) and `EUREKA_PROFILE` (your profile ID). When these are set, Radar CLI automatically uploads results after each scan — letting you view your full scan history and all findings in the **Eureka ASPM Dashboard**.
 
 ```bash
 export EUREKA_AGENT_TOKEN=<your token>
