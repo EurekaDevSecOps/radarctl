@@ -20,7 +20,7 @@
 
 ## Overview
 
-**Radar CLI** is a developer-friendly command-line tool that orchestrates multiple application security scanners — for code, dependencies, and secrets — in one unified workflow.  
+**Radar CLI** is a developer-friendly command-line tool that orchestrates multiple application security scanners — for code, dependencies, and secrets — in one unified package.
 
 With Radar CLI, you can:
 - Run **SAST**, **SCA**, and **secret scanning** locally or in CI/CD pipelines.
