@@ -18,10 +18,10 @@
 
 ## Overview
 
-**Radar CLI** is a command-line tool that orchestrates multiple application security scanners — for code, dependencies, and secrets — in one unified package. We've put a lot of effort into making Radar CLI easy to use for developers and easy to integrate into CI/CD pipelines. Check out our accompanying [GitHub Action for Radar CLI](https://github.com/EurekaDevSecOps/scan-action).
+**Radar CLI** is a command-line tool that orchestrates multiple application security scanners — for code, dependencies, containers, and secrets — in one unified package. We've put a lot of effort into making Radar CLI easy to use for developers and easy to integrate into CI/CD pipelines. Check out our accompanying [GitHub Action for Radar CLI](https://github.com/EurekaDevSecOps/scan-action).
 
 With Radar CLI, you can:
-- Run **SAST**, **SCA**, and **secret scanning** locally or in CI/CD pipelines.
+- Run **SAST**, **SCA**, **container**, and **secret scanning** locally or in CI/CD pipelines.
 - Generate **unified SARIF reports** compatible with industry-standard security and vulnerability analysis tools.
 - Optionally upload results to **Eureka ASPM** for centralized tracking, deduplication, and prioritization.
 
@@ -90,25 +90,27 @@ radar scan
 You can also specify scanners to use:
 
 ```bash
-radar scan -s "opengrep,gitleaks,grype"
+radar scan -s opengrep,gitleaks,grype
 ```
 
 Output a SARIF report:
 
 ```bash
-radar scan -s "opengrep,gitleaks,grype" -o report.sarif
+radar scan -s opengrep,gitleaks,grype -o report.sarif
 ```
 
 ---
 
 ## Supported Scanners
 
-| Category          | Scanners       | Description                                     |
-| ----------------- | -------------- | ----------------------------------------------- |
-| **SAST**          | Opengrep       | Detects insecure code patterns                  |
-| **Secrets**       | Gitleaks       | Finds hardcoded credentials                     |
-| **SCA**           | Grype, DepScan | Detects vulnerable dependencies                 |
-| **Container/IaC** | (coming soon)  | Scans Dockerfiles, Terraform, and K8s manifests |
+| Category          | Scanners                                                                                          | Description                                      |
+| ----------------- | ------------------------------------------------------------------------------------------------- | ------------------------------------------------ |
+| **SAST**          | [Opengrep](https://github.com/opengrep/opengrep)                                                  | Detects insecure code patterns                   |
+| **Secrets**       | [Gitleaks](https://github.com/gitleaks/gitleaks)                                                  | Finds hardcoded credentials                      |
+| **SCA**           | [Grype](https://github.com/anchore/grype), [Dep-Scan](https://github.com/owasp-dep-scan/dep-scan) | Detects vulnerable package dependencies          |
+| **Container**     | [Grype](https://github.com/anchore/grype)                                                         | Scans Docker, OCI, and Singularity image formats |
+
+All scanners in Radar are fully containerized for consistency and isolation. When you run a scan, Radar CLI automatically launches the corresponding scanner inside a Docker container. This ensures clean, reproducible results without needing to install each scanner locally. A working Docker Engine is required to run Radar scanners, and the container images for all supported scanners are publicly available on the GitHub Container Registry.
 
 ---
 
@@ -194,7 +196,7 @@ radar scan /my/repo/dir
 
 Save findings into a SARIF file:
 ```bash
-radar scan -o scan.sarif
+radar scan -o report.sarif
 ```
 
 Run only dependency and code scanners:
@@ -233,21 +235,21 @@ radar scan -e moderate,low
 
 ### Local Scan (no uploads)
 
-Perfect for open source and private projects — 100% local execution.
+Runs entirely on your machine — by default, Radar CLI doesn’t upload any findings. Your vulnerabilities stay local and private.
 
 ```bash
-radar scan -s "opengrep,gitleaks,grype"
+radar scan -s opengrep,gitleaks,grype -o report.sarif
 ```
 
 ### Upload Findings to Eureka ASPM
 
-See all findings in one place with deduplication, trend tracking, and risk prioritization.
+See all findings in one place with deduplication, trend tracking, and risk prioritization. To upload results to **Eureka ASPM**, provide your API credentials via two environment variables: `EUREKA_AGENT_TOKEN` (your API token) and `EUREKA_PROFILE` (your profile ID). When these are set, Radar CLI automatically uploads results after each scan — letting you view your full scan history and all findings in the **Eureka ASPM Dashboard**.
 
 ```bash
 export EUREKA_AGENT_TOKEN=<your token>
 export EUREKA_PROFILE=<your profile ID>
 
-radar scan -s "opengrep,gitleaks,grype" -o report.sarif
+radar scan -s opengrep,gitleaks,grype
 ```
 
 ---
