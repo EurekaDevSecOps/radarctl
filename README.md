@@ -7,10 +7,10 @@
 # Radar CLI
 ### One command. Complete AppSec coverage.
 
+<!-- ![Build](https://github.com/eurekadevsecops/radarctl/actions/workflows/test.yml/badge.svg) -->
+![Node](https://img.shields.io/badge/Node.js-22.x-blue?logo=node.js)
 ![npm version](https://img.shields.io/npm/v/@eurekadevsecops/radar?color=2b82f6&label=NPM)
 ![License](https://img.shields.io/github/license/eurekadevsecops/radarctl?color=green)
-![Node](https://img.shields.io/badge/Node.js-22.x-blue?logo=node.js)
-![Build](https://github.com/eurekadevsecops/radarctl/actions/workflows/test.yml/badge.svg)
 
 </div>
 
