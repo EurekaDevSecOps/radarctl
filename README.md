@@ -187,7 +187,7 @@ See our [CONTRIBUTING.md](./CONTRIBUTING.md) for setup and development guideline
 
 ## License
 
-Radar CLI is licensed under the **MIT License** — © Eureka DevSecOps Inc.
+Radar CLI is licensed under the terms of the **GPL v3 License** — © Eureka DevSecOps Inc.
 
 ---
 
@@ -195,84 +195,3 @@ Radar CLI is licensed under the **MIT License** — © Eureka DevSecOps Inc.
 
 * Issues & feature requests: [GitHub Issues](https://github.com/eurekadevsecops/radarctl/issues)
 * Security: [security@eurekadevsecops.com](mailto:security@eurekadevsecops.com)
-
----
-
-<p align="center">
-  <i>Radar CLI — One command. Complete AppSec coverage.</i>
-</p>
-
-
-
-
-
-
-
-
-
-
-
-<pre>
-               _            
- _ __ __ _  __| | __ _ _ __ 
-| '__/ _` |/ _` |/ _` | '__|
-| | | (_| | (_| | (_| | |   
-|_|  \__,_|\__,_|\__,_|_|
-</pre>
-
-# Introduction
-
-radarctl is a command-line interface for Radar, an open-source orchestrator of security scanners. Radar is part of the Eureka DevSecOps platform.
-
-## Requirements
-
-- Node.js version 22.17.0 or higher
-- Docker
-
-## Installation
-
-Install the Radar CLI on the command-line using [NPM](https://npmjs.com):
-
-```bash
-npm i -g @eurekadevsecops/radar
-```
-
-## Getting Started
-
-Run the Radar CLI:
-
-```bash
-radar
-```
-
-You will get a list of available commands:
-```bash
-COMMANDS 
-  help      display help              
-  scan      scan for vulnerabilities  
-  scanners  display available scanners 
-```
-
-View help page for each command by using `help` on the command-line:
-
-```bash
-radar help
-```
-
-## Running a Scan
-
-Run a scan on the source code in the current working directory:
-
-```bash
-radar scan
-```
-
-Refer to help for the `scan` command for more information.
-
-```bash
-radar help scan
-```
-
-## Contributing guide
-
-See [CONTRIBUTING.md](./CONTRIBUTING.md)
