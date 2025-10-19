@@ -90,13 +90,13 @@ radar scan
 You can also specify scanners to use:
 
 ```bash
-radar scan -s "opengrep,gitleaks,grype"
+radar scan -s opengrep,gitleaks,grype
 ```
 
 Output a SARIF report:
 
 ```bash
-radar scan -s "opengrep,gitleaks,grype" -o report.sarif
+radar scan -s opengrep,gitleaks,grype -o report.sarif
 ```
 
 ---
@@ -238,7 +238,7 @@ radar scan -e moderate,low
 Runs entirely on your machine — by default, Radar CLI doesn’t upload any findings. Your vulnerabilities stay local and private.
 
 ```bash
-radar scan -s "opengrep,gitleaks,grype" -o report.sarif
+radar scan -s opengrep,gitleaks,grype -o report.sarif
 ```
 
 ### Upload Findings to Eureka ASPM
@@ -249,7 +249,7 @@ See all findings in one place with deduplication, trend tracking, and risk prior
 export EUREKA_AGENT_TOKEN=<your token>
 export EUREKA_PROFILE=<your profile ID>
 
-radar scan -s "opengrep,gitleaks,grype"
+radar scan -s opengrep,gitleaks,grype
 ```
 
 ---
