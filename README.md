@@ -249,7 +249,7 @@ See all findings in one place with deduplication, trend tracking, and risk prior
 export EUREKA_AGENT_TOKEN=<your token>
 export EUREKA_PROFILE=<your profile ID>
 
-radar scan -s "opengrep,gitleaks,grype" -o report.sarif
+radar scan -s "opengrep,gitleaks,grype"
 ```
 
 ---
