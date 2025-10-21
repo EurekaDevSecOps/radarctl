@@ -6,6 +6,9 @@ trigger:
 pool:
   vmImage: ubuntu-latest
 
+variables:
+  - group: Radar CLI
+
 steps:
 - task: NodeTool@0
   inputs:
