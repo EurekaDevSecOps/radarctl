@@ -103,12 +103,20 @@ radar scan -s opengrep,gitleaks,grype -o report.sarif
 
 ## Supported Scanners
 
-| Category          | Scanners                                                                                          | Description                                      |
-| ----------------- | ------------------------------------------------------------------------------------------------- | ------------------------------------------------ |
-| **SAST**          | [Opengrep](https://github.com/opengrep/opengrep)                                                  | Detects insecure code patterns                   |
-| **Secrets**       | [Gitleaks](https://github.com/gitleaks/gitleaks)                                                  | Finds hardcoded credentials                      |
-| **SCA**           | [Grype](https://github.com/anchore/grype), [Dep-Scan](https://github.com/owasp-dep-scan/dep-scan), [Veracode SCA](https://www.veracode.com/products/software-composition-analysis/) | Detects vulnerable package dependencies          |
-| **Container**     | [Grype](https://github.com/anchore/grype)                                                         | Scans Docker, OCI, and Singularity image formats |
+| By Scanner                                                                        | Categories             |
+| --------------------------------------------------------------------------------- | ---------------------- |
+| [Dep-Scan](https://github.com/owasp-dep-scan/dep-scan)                            | **SCA**                |
+| [Gitleaks](https://github.com/gitleaks/gitleaks)                                  | **Secrets**            |
+| [Grype](https://github.com/anchore/grype)                                         | **SCA**, **Container** |
+| [Opengrep](https://github.com/opengrep/opengrep)                                  | **SAST**               |
+| [Veracode SCA](https://www.veracode.com/products/software-composition-analysis/)  | **SCA**                |
+
+| By Category       | Description                                      | Scanners                                                                                          |
+| ----------------- | ------------------------------------------------ | ------------------------------------------------------------------------------------------------- |
+| **SAST**          | Detects insecure code patterns                   | [Opengrep](https://github.com/opengrep/opengrep)                                                  |
+| **Secrets**       | Finds hardcoded credentials                      | [Gitleaks](https://github.com/gitleaks/gitleaks)                                                  |
+| **SCA**           | Detects vulnerable package dependencies          | [Veracode SCA](https://www.veracode.com/products/ [Grype](https://github.com/anchore/grype), [Dep-Scan](https://github.com/owasp-dep-scan/dep-scan), software-composition-analysis/) |
+| **Container**     | Scans Docker, OCI, and Singularity image formats | [Grype](https://github.com/anchore/grype)                                                         |
 
 All scanners in Radar are fully containerized for consistency and isolation. When you run a scan, Radar CLI automatically launches the corresponding scanner inside a Docker container. This ensures clean, reproducible results without needing to install each scanner locally. A working Docker Engine is required to run Radar scanners, and the container images for all supported scanners are publicly available on the GitHub Container Registry.
 
