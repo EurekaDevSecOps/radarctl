@@ -14,7 +14,7 @@ APP_DIR=$(cd $1; pwd)
 CFG_DIR=$(cd $2; pwd)
 OUT_DIR=$(cd $3; pwd)
 
-docker run --rm --entrypoint=/bin/sh -it \
+docker run --rm \
     -v "${APP_DIR}":/home/luser/app \
     -v "${CFG_DIR}":/home/luser/radar-input \
     -v "${OUT_DIR}":/home/luser/radar-output \
