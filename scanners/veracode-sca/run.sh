@@ -8,7 +8,6 @@ set -e
 # $3 - Path to the output folder where scan results should be stored
 ###
 
-
 # Expand relative paths
 APP_DIR=$(cd $1; pwd)
 CFG_DIR=$(cd $2; pwd)
@@ -19,4 +18,4 @@ docker run --rm \
     -v "${CFG_DIR}":/tmp/radar-input \
     -v "${OUT_DIR}":/tmp/radar-output \
     -e SRCCLR_API_TOKEN=${SRCCLR_API_TOKEN} \
-    ghcr.io/eurekadevsecops/veracode-sca
+    ghcr.io/eurekadevsecops/radar-veracode-sca 2>&1
