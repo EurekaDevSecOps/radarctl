@@ -1,4 +1,4 @@
-name: Eureka Radar
+name: Radar CLI
 
 on:
   workflow_dispatch:
@@ -8,9 +8,9 @@ on:
       - main
 
 jobs:
-  radar_scan:
+  scan:
     # Radar scanner repo: https://github.com/EurekaDevSecOps/radarctl
-    name: Radar Scan
+    name: Scan
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repo
