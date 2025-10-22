@@ -18,7 +18,7 @@ steps:
 - script: radar && radar scanners
   displayName: Verify Radar install
 
-- script: radar scan
+- script: radar scan -s gitleaks,grype,opengrep,veracode-sca
   displayName: Run Radar scan
   env:
     EUREKA_AGENT_TOKEN: $(EUREKA_AGENT_TOKEN)
