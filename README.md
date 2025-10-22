@@ -113,6 +113,8 @@ All scanners in Radar are fully containerized for consistency and isolation. Whe
 | [Opengrep](https://github.com/opengrep/opengrep)                                  | **SAST**               | Opengrep is an ultra-fast static code analysis engine to find security issues in code. Opengrep supports 30+ languages. |
 | [Veracode SCA](https://www.veracode.com/products/software-composition-analysis/)  | **SCA**                | Effectively identify open-source risks with unmatched precision, ensuring secure and compliant code. Leverages a proprietary database to accurately and promptly detect new vulnerabilities. |
 
+Scanners grouped by category:
+
 | By Category       | Description                                      | Scanners                                                                                          |
 | ----------------- | ------------------------------------------------ | ------------------------------------------------------------------------------------------------- |
 | **SAST**          | Detects insecure code patterns                   | [Opengrep](https://github.com/opengrep/opengrep)                                                  |
