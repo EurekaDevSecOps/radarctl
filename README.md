@@ -137,6 +137,7 @@ If no target is specified, the current working directory is scanned.
 | `-q, --quiet`      | Suppress stdout logging (except errors).                                                            |
 | `-f, --format`     | Output format for severity display: `security` (high/moderate/low) or `sarif` (error/warning/note). |
 | `-e, --escalate`   | Treat specified lower severities as high (e.g. `--escalate=moderate,low`).                          |
+| `-l, --local`      | Run a local scan (don't upload scan findings to Eureka).                                            |
 
 **PARAMETERS**
 
@@ -253,6 +254,8 @@ export EUREKA_PROFILE=<your profile ID>
 
 radar scan -s opengrep,gitleaks,grype
 ```
+
+NOTE: To prevent Radar CLI from uploading scan findings even when you have `EUREKA_AGENT_TOKEN` and `EUREKA_PROFILE` set, you can pass the `-l/--local` option on the command line.
 
 ---
 
