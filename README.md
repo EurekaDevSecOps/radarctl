@@ -103,14 +103,24 @@ radar scan -s opengrep,gitleaks,grype -o report.sarif
 
 ## Supported Scanners
 
-| Category          | Scanners                                                                                          | Description                                      |
-| ----------------- | ------------------------------------------------------------------------------------------------- | ------------------------------------------------ |
-| **SAST**          | [Opengrep](https://github.com/opengrep/opengrep)                                                  | Detects insecure code patterns                   |
-| **Secrets**       | [Gitleaks](https://github.com/gitleaks/gitleaks)                                                  | Finds hardcoded credentials                      |
-| **SCA**           | [Grype](https://github.com/anchore/grype), [Dep-Scan](https://github.com/owasp-dep-scan/dep-scan), [Veracode SCA](https://www.veracode.com/products/software-composition-analysis/) | Detects vulnerable package dependencies          |
-| **Container**     | [Grype](https://github.com/anchore/grype)                                                         | Scans Docker, OCI, and Singularity image formats |
-
 All scanners in Radar are fully containerized for consistency and isolation. When you run a scan, Radar CLI automatically launches the corresponding scanner inside a Docker container. This ensures clean, reproducible results without needing to install each scanner locally. A working Docker Engine is required to run Radar scanners, and the container images for all supported scanners are publicly available on the GitHub Container Registry.
+
+| By Scanner                                                                        | Categories             | Description |
+| --------------------------------------------------------------------------------- | ---------------------- | ----------- |
+| [Dep-Scan](https://github.com/owasp-dep-scan/dep-scan)                            | **SCA**                | OWASP dep-scan is a next-generation security and risk audit tool based on known vulnerabilities, advisories, and license limitations for project dependencies. Scan most application code - local repos, Linux container images, Kubernetes manifests, and OS - to identify known CVEs with prioritization. |
+| [Gitleaks](https://github.com/gitleaks/gitleaks)                                  | **Secrets**            | Gitleaks is a tool for detecting secrets like passwords, API keys, and tokens. |
+| [Grype](https://github.com/anchore/grype)                                         | **SCA**, **Container** | Scans the contents of a container image or filesystem to find known vulnerabilities. Find vulnerabilities for language-specific packages and major operating system packages. Supports Docker, OCI and Singularity image formats. |
+| [Opengrep](https://github.com/opengrep/opengrep)                                  | **SAST**               | Opengrep is an ultra-fast static code analysis engine to find security issues in code. Opengrep supports 30+ languages. |
+| [Veracode SCA](https://www.veracode.com/products/software-composition-analysis/)  | **SCA**                | Effectively identify open-source risks with unmatched precision, ensuring secure and compliant code. Leverages a proprietary database to accurately and promptly detect new vulnerabilities. |
+
+Scanners grouped by category:
+
+| By Category       | Description                                      | Scanners                                                                                          |
+| ----------------- | ------------------------------------------------ | ------------------------------------------------------------------------------------------------- |
+| **SAST**          | Detects insecure code patterns                   | [Opengrep](https://github.com/opengrep/opengrep)                                                  |
+| **Secrets**       | Finds hardcoded credentials                      | [Gitleaks](https://github.com/gitleaks/gitleaks)                                                  |
+| **SCA**           | Detects vulnerable package dependencies          | [Veracode SCA](https://www.veracode.com/products/software-composition-analysis/), [Grype](https://github.com/anchore/grype), [Dep-Scan](https://github.com/owasp-dep-scan/dep-scan) |
+| **Container**     | Scans Docker, OCI, and Singularity image formats | [Grype](https://github.com/anchore/grype)                                                         |
 
 Veracode SCA (formerly SourceClear) scanner requires the SRCCLR_API_TOKEN environment variable. If not present or valid, scanning with Veracode SCA will not work. Read more about it in [Veracode SCA online documentation](https://docs.veracode.com/r/Veracode_SCA_Agent_Environment_Variables#srcclr_api_token).
 
