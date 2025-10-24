@@ -201,7 +201,7 @@ module.exports = {
     catch (error) {
       log(`\n${error}`)
       if (!args.QUIET) log('Scan NOT completed!')
-      if (telemetry.enabled && !args.LOCAL) {
+      if (telemetry.enabled && scanID && !args.LOCAL) {
         const res = await telemetry.send(`scans/:scanID/failed`, { scanID })
         if (!res.ok) log(`WARNING: Scan status (not completed) telemetry upload failed: [${res.status}] ${res.statusText}: ${await res.text()}`)
       }
