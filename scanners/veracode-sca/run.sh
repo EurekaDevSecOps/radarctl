@@ -13,7 +13,8 @@ APP_DIR=$(cd $1; pwd)
 CFG_DIR=$(cd $2; pwd)
 OUT_DIR=$(cd $3; pwd)
 
-docker run --rm \
+# Veracode SCA only supports linux/amd64.
+docker run --platform linux/amd64 --rm \
     -v "${APP_DIR}":/home/luser/app \
     -v "${CFG_DIR}":/home/luser/radar-input \
     -v "${OUT_DIR}":/home/luser/radar-output \
