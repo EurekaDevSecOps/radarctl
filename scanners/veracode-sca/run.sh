@@ -15,7 +15,7 @@ OUT_DIR=$(cd $3; pwd)
 
 docker run --rm \
     -v "${APP_DIR}":/home/luser/app \
-    -v "${CFG_DIR}":/tmp/radar-input \
-    -v "${OUT_DIR}":/tmp/radar-output \
+    -v "${CFG_DIR}":/home/luser/radar-input \
+    -v "${OUT_DIR}":/home/luser/radar-output \
     -e SRCCLR_API_TOKEN=${SRCCLR_API_TOKEN} \
     ghcr.io/eurekadevsecops/radar-veracode-sca 2>&1
