@@ -20,6 +20,7 @@ module.exports = {
     { name: 'DEBUG', short: 'd', long: 'debug', type: 'boolean', description: 'log detailed debug info to stdout' },
     { name: 'ESCALATE', short: 'e', long: 'escalate', type: 'string', description: 'severities to treat as high/error' },
     { name: 'FORMAT', short: 'f', long: 'format', type: 'string', description: 'severity format' },
+    { name: 'LOCAL', short: 'l', long: 'local', type: 'boolean', description: 'local scan (no upload of findings to Eureka)' },
     { name: 'OUTPUT', short: 'o', long: 'output', type: 'string', description: 'output SARIF file' },
     { name: 'QUIET', short: 'q', long: 'quiet', type: 'boolean', description: 'suppress stdout logging' },
     { name: 'SCANNERS', short: 's', long: 'scanners', type: 'string', description: 'list of scanners to use' }
@@ -60,6 +61,15 @@ module.exports = {
     'security' severity format. Findings can also be displayed as errors, warnings,
     and notes. This is the 'sarif' severity format.
 
+    Runs entirely on your machine — by default, Radar CLI doesn’t upload any findings.
+    Your vulnerabilities stay local and private. To upload results to Eureka ASPM,
+    provide your API credentials via two environment variables: 'EUREKA_AGENT_TOKEN'
+    (your API token) and 'EUREKA_PROFILE' (your profile ID). When these are set, Radar CLI
+    automatically uploads results after each scan — letting you view your full scan 
+    history and all findings in the Eureka ASPM Dashboard. To prevent Radar CLI from
+    uploading scan findings even when you have 'EUREKA_AGENT_TOKEN' and 'EUREKA_PROFILE'
+    set, you can pass the LOCAL option on the command line.
+
     Exit codes:
          0 - Clean and successful scan. No errors, warnings, or notes.
          1 - Bad command, arguments, or options. Scan not completed.
@@ -76,6 +86,7 @@ module.exports = {
   examples: [
     '$ radar scan ' + '(scan current working directory)'.grey,
     '$ radar scan . ' + '(scan current working directory)'.grey,
+    '$ radar scan --local ' + '(run a local scan / no uploads to Eureka)'.grey,
     '$ radar scan -d' + '(turn debug mode on)'.grey,
     '$ radar scan --debug' + '(turn debug mode on)'.grey,
     '$ radar scan /my/repo/dir ' + '(scan target directory)'.grey,
@@ -144,9 +155,13 @@ module.exports = {
     if (!categories.length) throw new Error(`CATEGORIES must be one or more of '${availableCategories.join("', '")}', or 'all'`)
     if (!scanners.length) throw new Error('No available scanners selected.')
 
+    if (!telemetry.enabled || args.LOCAL) {
+      log(`INFO: Running a local scan.\n`)
+    }
+
     // Send telemetry: scan started.
     let scanID = undefined
-    if (telemetry.enabled) {
+    if (telemetry.enabled && !args.LOCAL) {
       // TODO: Should pass scanID to the server; not read it from the server.
       try {
         const res = await telemetry.send(`scans/started`, {}, { scanners: scanners.map((s) => s.name) })
@@ -169,7 +184,7 @@ module.exports = {
     // Send telemetry: git metadata.
     const metadata = git.metadata(target)
     if (metadata.type === 'error') throw new Error(`${metadata.error.code}: ${metadata.error.details}`)
-    if (telemetry.enabled && scanID) {
+    if (telemetry.enabled && scanID && !args.LOCAL) {
       let res = await telemetry.send(`scans/:scanID/metadata`, { scanID }, { metadata })
       if (!res.ok) log(`WARNING: Scan metadata (stage 1) telemetry upload failed: [${res.status}] ${res.statusText}: ${await res.text()}`)
       res = await telemetry.sendSensitive(`scans/:scanID/metadata`, { scanID }, { metadata })
@@ -186,7 +201,7 @@ module.exports = {
     catch (error) {
       log(`\n${error}`)
       if (!args.QUIET) log('Scan NOT completed!')
-      if (telemetry.enabled) {
+      if (telemetry.enabled && scanID && !args.LOCAL) {
         const res = await telemetry.send(`scans/:scanID/failed`, { scanID })
         if (!res.ok) log(`WARNING: Scan status (not completed) telemetry upload failed: [${res.status}] ${res.statusText}: ${await res.text()}`)
       }
@@ -202,14 +217,14 @@ module.exports = {
     if (outfile) fs.writeFileSync(outfile, JSON.stringify(results.sarif, null, 2))
 
     // Send telemetry: scan results.
-    if (telemetry.enabled && scanID) {
+    if (telemetry.enabled && scanID && !args.LOCAL) {
       const res = await telemetry.sendSensitive(`scans/:scanID/results`, { scanID }, { findings: results.sarif, log: results.log })
       if (!res.ok) log(`WARNING: Scan results telemetry upload failed: [${res.status}] ${res.statusText}: ${await res.text()}`)
     }
 
     // Analyze scan results: group findings by severity level.
     let summary
-    if (telemetry.enabled && scanID) {
+    if (telemetry.enabled && scanID && !args.LOCAL) {
       const analysis = await telemetry.receiveSensitive(`scans/:scanID/summary`, { scanID })
       if (!analysis?.findingsBySeverity) throw new Error(`Failed to retrieve analysis summary for scan '${scanID}'`)
       summary = analysis.findingsBySeverity
@@ -218,7 +233,7 @@ module.exports = {
     }
 
     // Send telemetry: scan summary.
-    if (telemetry.enabled && scanID) {
+    if (telemetry.enabled && scanID && !args.LOCAL) {
       const res = await telemetry.send(`scans/:scanID/completed`, { scanID }, summary)
       if (!res.ok) log(`WARNING: Scan status (completed) telemetry upload failed: [${res.status}] ${res.statusText}: ${await res.text()}`)
     }
@@ -228,7 +243,7 @@ module.exports = {
       log()
       SARIF.visualizations.display_findings(summary, args.FORMAT, log)
       if (outfile) log(`Findings exported to ${outfile}`)
-      SARIF.visualizations.display_totals(summary, args.FORMAT, log, telemetry.enabled && scanID)
+      SARIF.visualizations.display_totals(summary, args.FORMAT, log, telemetry.enabled && scanID && !args.LOCAL)
     }
 
     // Determine the correct exit code.

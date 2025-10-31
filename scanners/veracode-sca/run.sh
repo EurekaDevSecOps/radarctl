@@ -8,7 +8,6 @@ set -e
 # $3 - Path to the output folder where scan results should be stored
 ###
 
-
 # Expand relative paths
 APP_DIR=$(cd $1; pwd)
 CFG_DIR=$(cd $2; pwd)
@@ -23,10 +22,11 @@ stat_uid_gid() {
   fi
 }
 
-docker run --rm \
+# Veracode SCA only supports linux/amd64.
+docker run --platform linux/amd64 --rm \
     --user "$(stat_uid_gid "${APP_DIR}")" \
     -v "${APP_DIR}":/home/luser/app \
     -v "${CFG_DIR}":/home/luser/radar-input \
     -v "${OUT_DIR}":/home/luser/radar-output \
     -e SRCCLR_API_TOKEN=${SRCCLR_API_TOKEN} \
-    ghcr.io/eurekadevsecops/radar-veracode-sca
+    ghcr.io/eurekadevsecops/radar-veracode-sca 2>&1

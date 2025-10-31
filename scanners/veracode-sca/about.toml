@@ -1,5 +1,5 @@
 name = "veracode-sca"
 title = "Veracode SCA"
-description = "Veracode's Software Composition Analysis tool for finding known vulnerabilities in imported dependencies.  Requires an API key from \"Agent-Based Scans\" in Veraode."
+description = "Finds known vulnerabilities in dependencies. Requires SRCCLR_API_TOKEN."
 categories = [ "SCA" ]
 cmd = "${assets}/run.sh ${target} ${assets} ${output}"
