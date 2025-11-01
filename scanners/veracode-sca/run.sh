@@ -24,9 +24,8 @@ stat_uid_gid() {
 
 # Veracode SCA only supports linux/amd64.
 docker run --platform linux/amd64 --rm \
-    --user "$(stat_uid_gid "${APP_DIR}")" \
-    -v "${APP_DIR}":/home/luser/app \
-    -v "${CFG_DIR}":/home/luser/radar-input \
-    -v "${OUT_DIR}":/home/luser/radar-output \
+    -v "${APP_DIR}":/opt/eureka/radar/temp/repo \
+    -v "${CFG_DIR}":/opt/eureka/radar/temp/input \
+    -v "${OUT_DIR}":/opt/eureka/radar/temp/output \
     -e SRCCLR_API_TOKEN=${SRCCLR_API_TOKEN} \
     ghcr.io/eurekadevsecops/radar-veracode-sca 2>&1
