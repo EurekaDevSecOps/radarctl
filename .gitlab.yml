@@ -1,0 +1,26 @@
+image: node:22
+
+services:
+  - docker:dind
+
+variables:
+  DOCKER_HOST: tcp://docker:2375
+  
+stages:
+    - scan
+
+radar-scan:
+    stage: scan
+    #only:
+    #- main
+    before_script:
+    - apt-get update && apt-get install -y docker.io
+    - npm i -g @eurekadevsecops/radar
+    - radar && radar scanners
+    - echo $CI_PROJECT_DIR
+    script:
+    - radar scan -s opengrep 
+
+    variables:
+        EUREKA_AGENT_TOKEN: $EUREKA_AGENT_TOKEN
+        EUREKA_PROFILE: $EUREKA_PROFILE
