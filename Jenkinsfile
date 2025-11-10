@@ -1,5 +1,5 @@
 pipeline {
-    agent any  // ← Changed: Run setup on Jenkins agent first
+    agent any
     
     environment {
         EUREKA_AGENT_TOKEN = credentials('EUREKA_AGENT_TOKEN')
@@ -7,55 +7,26 @@ pipeline {
     }
     
     stages {
-        stage('Setup') {
-            steps {
-                echo 'Pulling Docker image...'
-                sh 'docker pull node:22'
-            }
-        }
-        
         stage('Install Radar') {
-            agent {
-                docker {
-                    image 'node:22'
-                    args '-v /var/run/docker.sock:/var/run/docker.sock'
-                    reuseNode true
-                }
-            }
             steps {
                 echo 'Installing Radar CLI...'
                 sh '''
-                    npm install -g @eurekadevsecops/radar
-                    radar --version
+                    npm install @eurekadevsecops/radar
                 '''
             }
         }
         
         stage('Verify Scanners') {
-            agent {
-                docker {
-                    image 'node:22'
-                    args '-v /var/run/docker.sock:/var/run/docker.sock'
-                    reuseNode true
-                }
-            }
             steps {
                 echo 'Checking available scanners...'
-                sh 'radar scanners'
+                sh 'npx radar scanners'
             }
         }
         
         stage('Run Scan') {
-            agent {
-                docker {
-                    image 'node:22'
-                    args '-v /var/run/docker.sock:/var/run/docker.sock'
-                    reuseNode true
-                }
-            }
             steps {
                 echo 'Running security scan...'
-                sh 'radar scan -s opengrep'
+                sh 'npx radar scan -s opengrep'
             }
         }
     }
