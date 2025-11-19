@@ -4,12 +4,12 @@ const { jwtDecode } = require('jwt-decode')
 
 class Telemetry {
   #EUREKA_AGENT_TOKEN = process.env.EUREKA_AGENT_TOKEN
-  #USER_AGENT = `RadarCLI/${pkg.version} (${pkg.name}@${pkg.version}; ${process?.platform}-${process?.arch}; ${process?.release?.name}-${process?.version})`
+  #USER_AGENT = `RadarCLI/${pkg.version} (${pkg.pkgname}@${pkg.version}; ${process?.platform}-${process?.arch}; ${process?.release?.name}-${process?.version})`
   #EWA_URL
 
   constructor() {
     this.enabled = !!this.#EUREKA_AGENT_TOKEN
-    this.#EWA_URL = this.#claims(this.#EUREKA_AGENT_TOKEN)?.aud?.replace(/\/$/, '')
+    this.#EWA_URL = this.#claims(this.#EUREKA_AGENT_TOKEN).aud
   }
 
   async send(path, params, body, token) {
@@ -80,19 +80,16 @@ class Telemetry {
 
   #toPostURL(path, params, token) {
     const claims = this.#claims(token ?? this.#EUREKA_AGENT_TOKEN)
-    const aud = claims.aud.replace(/\/$/, '')
-    if (path === `scans/started`) return `${aud}/scans/started`
-    if (path === `scans/:scanID/completed`) return `${aud}/scans/${params.scanID}/completed`
-    if (path === `scans/:scanID/failed`) return `${aud}/scans/${params.scanID}/completed`
-    if (path === `scans/:scanID/metadata`) return `${aud}/scans/${params.scanID}/metadata`
-    if (path === `scans/:scanID/results`) return `${aud}/scans/${params.scanID}/results`
+    if (path === `scans/started`) return `${claims.aud}/scans/started`
+    if (path === `scans/:scanID/completed`) return `${claims.aud}/scans/${params.scanID}/completed`
+    if (path === `scans/:scanID/failed`) return `${claims.aud}/scans/${params.scanID}/completed`
+    if (path === `scans/:scanID/results`) return `${claims.aud}/scans/${params.scanID}/results`
     throw new Error(`Internal Error: Unknown telemetry event: POST ${path}`)
   }
 
   #toReceiveURL(path, params, token) {
     const claims = this.#claims(token ?? this.#EUREKA_AGENT_TOKEN)
-    const aud = claims.aud.replace(/\/$/, '')
-    if (path === `scans/:scanID/summary`) return `${aud}/scans/${params.scanID}/summary?profileId=${process.env.EUREKA_PROFILE}`
+    if (path === `scans/:scanID/summary`) return `${claims.aud}/scans/${params.scanID}/summary`
     throw new Error(`Internal Error: Unknown telemetry event: GET ${path}`)
   }
 
@@ -102,11 +99,10 @@ class Telemetry {
   }
 
   #toBody(path, body) {
-    if (path === `scans/started`) body = { ...body, timestamp: DateTime.now().toISO(), profile_id: process.env.EUREKA_PROFILE }
+    if (path === `scans/started`) body = { ...body, timestamp: DateTime.now().toISO() }
     if (path === `scans/:scanID/completed`) body = { ...this.#toFindings(body), timestamp: DateTime.now().toISO(), status: 'success', log: { sizeBytes: 0, warnings: 0, errors: 0, link: 'none' }, params: { id: '' }}
     if (path === `scans/:scanID/failed`) body = { ...body, timestamp: DateTime.now().toISO(), status: 'failure', findings: { total: 0, critical: 0, high: 0, med: 0, low: 0 }, log: { sizeBytes: 0, warnings: 0, errors: 0, link: 'none' }, params: { id: '' }}
-    if (path === `scans/:scanID/metadata`) body = { metadata: body.metadata, profileId: process.env.EUREKA_PROFILE }
-    if (path === `scans/:scanID/results`) body = { findings: body.findings /* SARIF */, profileId: process.env.EUREKA_PROFILE, log: Buffer.from(body.log, 'utf8').toString('base64') }
+    if (path === `scans/:scanID/results`) body = { findings: body.findings /* SARIF */, log: Buffer.from(body.log, 'utf8').toString('base64') }
     return JSON.stringify(body)
   }
 
