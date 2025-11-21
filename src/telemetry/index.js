@@ -80,16 +80,18 @@ class Telemetry {
 
   #toPostURL(path, params, token) {
     const claims = this.#claims(token ?? this.#EUREKA_AGENT_TOKEN)
-    if (path === `scans/started`) return `${claims.aud}/scans/started`
-    if (path === `scans/:scanID/completed`) return `${claims.aud}/scans/${params.scanID}/completed`
-    if (path === `scans/:scanID/failed`) return `${claims.aud}/scans/${params.scanID}/completed`
-    if (path === `scans/:scanID/results`) return `${claims.aud}/scans/${params.scanID}/results`
+    const aud = claims.aud.replace(/\/$/, '')
+    if (path === `scans/started`) return `${aud}/scans/started`
+    if (path === `scans/:scanID/completed`) return `${aud}/scans/${params.scanID}/completed`
+    if (path === `scans/:scanID/failed`) return `${aud}/scans/${params.scanID}/completed`
+    if (path === `scans/:scanID/metadata`) return `${aud}/scans/${params.scanID}/metadata`
+    if (path === `scans/:scanID/results`) return `${aud}/scans/${params.scanID}/results`
     throw new Error(`Internal Error: Unknown telemetry event: POST ${path}`)
   }
 
   #toReceiveURL(path, params, token) {
     const claims = this.#claims(token ?? this.#EUREKA_AGENT_TOKEN)
-    if (path === `scans/:scanID/summary`) return `${claims.aud}/scans/${params.scanID}/summary`
+    if (path === `scans/:scanID/summary`) return `${claims.aud}/scans/${params.scanID}/summary?repoFullName=${encodeURIComponent(params.fullRepoName}`
     throw new Error(`Internal Error: Unknown telemetry event: GET ${path}`)
   }
 
@@ -102,7 +104,8 @@ class Telemetry {
     if (path === `scans/started`) body = { ...body, timestamp: DateTime.now().toISO() }
     if (path === `scans/:scanID/completed`) body = { ...this.#toFindings(body), timestamp: DateTime.now().toISO(), status: 'success', log: { sizeBytes: 0, warnings: 0, errors: 0, link: 'none' }, params: { id: '' }}
     if (path === `scans/:scanID/failed`) body = { ...body, timestamp: DateTime.now().toISO(), status: 'failure', findings: { total: 0, critical: 0, high: 0, med: 0, low: 0 }, log: { sizeBytes: 0, warnings: 0, errors: 0, link: 'none' }, params: { id: '' }}
-    if (path === `scans/:scanID/results`) body = { findings: body.findings /* SARIF */, log: Buffer.from(body.log, 'utf8').toString('base64') }
+    if (path === `scans/:scanID/metadata`) body = { metadata: body.metadata, repoFullName: body.repoFullName }
+    if (path === `scans/:scanID/results`) body = { findings: body.findings /* SARIF */, log: Buffer.from(body.log, 'utf8').toString('base64'), repoFullName: body.repoFullName  }
     return JSON.stringify(body)
   }
 
