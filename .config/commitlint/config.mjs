@@ -142,7 +142,7 @@ const Configuration = {
     customScopesAlign: 'bottom',
     customScopesAlias: 'custom',
     emptyScopesAlias: 'empty',
-    upperCaseSubject: true,
+    upperCaseSubject: false,
     markBreakingChangeMode: false,
     allowBreakingChanges: ['feat', 'fix', 'perf'],
     breaklineNumber: 100,
