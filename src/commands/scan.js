@@ -230,7 +230,6 @@ module.exports = {
     let summary
     if (telemetry.enabled && scanID && !args.LOCAL) {
       const analysis = await telemetry.receiveSensitive(`scans/:scanID/summary`, { scanID, repoFullName })
-      console.log(analysis)
       if (!analysis?.findingsBySeverity) throw new Error(`Failed to retrieve analysis summary for scan '${scanID}'`)
       summary = analysis.findingsBySeverity
     } else {
@@ -239,7 +238,7 @@ module.exports = {
 
     // Send telemetry: scan summary.
     if (telemetry.enabled && scanID && !args.LOCAL) {
-      const res = await telemetry.send(`scans/:scanID/completed`, { scanID }, summary)
+      const res = await telemetry.send(`scans/:scanID/completed`, { scanID }, { summary, repoFullName })
       if (!res.ok) log(`WARNING: Scan status (completed) telemetry upload failed: [${res.status}] ${res.statusText}: ${await res.text()}`)
     }
 
