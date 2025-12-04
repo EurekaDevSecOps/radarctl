@@ -71,7 +71,8 @@ class Telemetry {
         'Content-Type': 'application/json',
         'User-Agent': this.#USER_AGENT,
         'Accept': 'application/json'
-      }
+      },
+      body: JSON.stringify({ profileId: process.env.EUREKA_PROFILE })
     })
     if (!response.ok) throw new Error(`Internal Error: Failed to get VDBE auth token from EWA: ${response.statusText}: ${await response.text()}`)
     const data = await response.json()
@@ -91,7 +92,10 @@ class Telemetry {
 
   #toReceiveURL(path, params, token) {
     const claims = this.#claims(token ?? this.#EUREKA_AGENT_TOKEN)
-    if (path === `scans/:scanID/summary`) return `${claims.aud}/scans/${params.scanID}/summary?repoFullName=${encodeURIComponent(params.repoFullName)}`
+    if (path === `scans/:scanID/summary`) {
+      const profileParam = process.env.EUREKA_PROFILE ? `&profileId=${process.env.EUREKA_PROFILE}` : ''
+      return `${claims.aud}/scans/${params.scanID}/summary?repoFullName=${encodeURIComponent(params.repoFullName)}${profileParam}`
+    }
     throw new Error(`Internal Error: Unknown telemetry event: GET ${path}`)
   }
 
