@@ -83,11 +83,25 @@ module.exports = {
       scanners.push(scanner)
     }
 
+    // Send telemtry: create repository/installation for imported vulnerabilities.
+    const importOwner = results.sarif.runs[0].tool?.driver?.name || 'unknown'
+    const importedRepoName = `${crypto.randomBytes(8).toString('hex')}`
+    const importedRepoFullName = `${importOwner}/${importedRepoName}`
+    try {
+      const res = await telemetry.send(`repositories/import`, {}, {repositoryName: importedRepoName, repositoryFullName: importedRepoFullName, owner: importOwner })
+      if (!res.ok) throw new Error(`[${res.status}] ${res.statusText}: ${await res.text()}`)
+    }
+    catch (error) {
+      log(`ERROR: ${error.message}${error?.cause?.code === 'ECONNREFUSED' ? ': CONNECTION REFUSED' : ''}`)
+      log(`Terminating with exit code 16. See 'radar help import' for list of possible exit codes.`)
+      return 0x10 // exit code
+    }
+
     // Send telemetry: scan started.
     let scanID = undefined
     // TODO: Should pass scanID to the server; not read it from the server.
     try {
-      const res = await telemetry.send(`scans/started`, {}, { scanners })
+      const res = await telemetry.send(`scans/started`, {}, { scanners, repoFullName: importedRepoFullName })
       if (!res.ok) throw new Error(`[${res.status}] ${res.statusText}: ${await res.text()}`)
       const data = await res.json()
       scanID = data.scan_id
@@ -98,19 +112,26 @@ module.exports = {
       return 0x10 // exit code
     }
 
+    // Send telemetry: scan metadata.
+    let res = await telemetry.send(`scans/:scanID/metadata`, { scanID }, { metadata: {type: 'folder'}, repoFullName: importedRepoFullName})
+    if (!res.ok) log(`WARNING: Scan metadata (stage 1) telemetry upload failed: [${res.status}] ${res.statusText}: ${await res.text()}`)
+    res = await telemetry.sendSensitive(`scans/:scanID/metadata`, { scanID }, { metadata: {type: 'folder'}, repoFullName: importedRepoFullName })
+    if (!res.ok) log(`WARNING: Scan metadata (stage 2) telemetry upload failed: [${res.status}] ${res.statusText}: ${await res.text()}`)
+
     // Transform scan findings: treat warnings and notes as errors, and normalize location paths.
     if (escalations) results.sarif = SARIF.transforms.escalate(results.sarif, escalations)
 
     // Send telemetry: scan results.
-    await telemetry.sendSensitive(`scans/:scanID/results`, { scanID }, { findings: results.sarif, log: results.log })
+    await telemetry.sendSensitive(`scans/:scanID/results`, { scanID }, { findings: results.sarif, log: results.log, repoFullName: importedRepoFullName})
 
     // Analyze scan results: group findings by severity level.
-    const analysis = await telemetry.receiveSensitive(`scans/:scanID/summary`, { scanID })
+    const analysis = await telemetry.receiveSensitive(`scans/:scanID/summary`, { scanID, repoFullName: importedRepoFullName })
+
     if (!analysis?.findingsBySeverity) throw new Error(`Failed to retrieve analysis summary for scan '${scanID}'`)
     const summary = analysis.findingsBySeverity
 
     // Send telemetry: scan summary.
-    await telemetry.send(`scans/:scanID/completed`, { scanID }, summary)
+    await telemetry.send(`scans/:scanID/completed`, { scanID }, { summary, repoFullName: importedRepoFullName })
 
     // Display summarized findings.
     if (!args.QUIET) {
