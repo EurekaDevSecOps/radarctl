@@ -87,7 +87,6 @@ class Telemetry {
     if (path === `scans/:scanID/failed`) return `${aud}/scans/${params.scanID}/completed`
     if (path === `scans/:scanID/metadata`) return `${aud}/scans/${params.scanID}/metadata`
     if (path === `scans/:scanID/results`) return `${aud}/scans/${params.scanID}/results`
-    if (path === `repositories/import`) return `${aud}/repositories/import`
     throw new Error(`Internal Error: Unknown telemetry event: POST ${path}`)
   }
 
@@ -111,7 +110,6 @@ class Telemetry {
     if (path === `scans/:scanID/failed`) body = { ...body, timestamp: DateTime.now().toISO(), status: 'failure', findings: { total: 0, critical: 0, high: 0, med: 0, low: 0 }, log: { sizeBytes: 0, warnings: 0, errors: 0, link: 'none' }, params: { id: '' }}
     if (path === `scans/:scanID/metadata`) body = { metadata: body.metadata, repoFullName: body.repoFullName, profileId: process.env.EUREKA_PROFILE }
     if (path === `scans/:scanID/results`) body = { findings: body.findings /* SARIF */, log: Buffer.from(body.log, 'utf8').toString('base64'), repoFullName: body.repoFullName, profileId: process.env.EUREKA_PROFILE  }
-    if (path === `repositories/imported`) body = { ...body }
     return JSON.stringify(body)
   }
 

@@ -17,11 +17,13 @@ module.exports = {
   options: [
     { name: 'ESCALATE', short: 'e', long: 'escalate', type: 'string', description: 'severities to treat as high/error' },
     { name: 'FORMAT', short: 'f', long: 'format', type: 'string', description: 'severity format' },
-    { name: 'QUIET', short: 'q', long: 'quiet', type: 'boolean', description: 'suppress stdout logging' }
+    { name: 'QUIET', short: 'q', long: 'quiet', type: 'boolean', description: 'suppress stdout logging' },
+    { name: 'REPOSITORY', short: 'r', long: 'repository', type: 'string', description: 'corresponding Eureka repository to imp', required: true}
   ],
   description: `
     Imports vulnerabilities from the input SARIF file given by INPUT argument.
     The SARIF file must have been produced by scanners supported by Radar CLI.
+    The repository must have been added to your Eureka organization.
 
     When quiet mode is selected with the QUIET command-line option, most stdout
     logs are ommitted except for errors that occur with the importing process.
@@ -36,11 +38,11 @@ module.exports = {
         16 - Import aborted due to unexpected error.
   `,
   examples: [
-    '$ radar import scan.sarif ' + '(import findings from SARIF file)'.grey,
-    '$ radar import -f security scan.sarif ' + '(displays findings as high, moderate, and low)'.grey,
-    '$ radar import -f sarif scan.sarif ' + '(displays findings as error, warning, and note)'.grey,
-    '$ radar import -e moderate,low scan.sarif ' + '(treat lower severities as high)'.grey,
-    '$ radar import -f sarif -e warning,note scan.sarif ' + '(treat lower severities as errors)'.grey
+    '$ radar import scan.sarif -r myorg/myproject ' + '(import findings from SARIF file)'.grey,
+    '$ radar import -f security scan.sarif -r myorg/myproject ' + '(displays findings as high, moderate, and low)'.grey,
+    '$ radar import -f sarif scan.sarif -r myorg/myproject ' + '(displays findings as error, warning, and note)'.grey,
+    '$ radar import -e moderate,low scan.sarif -r myorg/myproject ' + '(treat lower severities as high)'.grey,
+    '$ radar import -f sarif -e warning,note scan.sarif -r myorg/myproject' + '(treat lower severities as errors)'.grey
   ],
   run: async (toolbox, args) => {
     const { log, scanners: availableScanners, telemetry } = toolbox
@@ -57,6 +59,12 @@ module.exports = {
       if (args.FORMAT === 'security' && severity !== 'moderate' && severity !== 'low') throw new Error(`Severity to escalate must be 'moderate' or 'low'`)
       if (args.FORMAT === 'sarif' && severity !== 'warning' && severity !== 'note') throw new Error(`Severity to escalate must be 'warning' or 'note'`)
     })
+    if(!args.REPOSITORY) {
+      const repositoryFormat = /^([a-zA-Z0-9_.-]+)\/([a-zA-Z0-9_.-]+)$/
+      if(!repositoryFormat.test(args.REPOSITORY)) {
+        throw new Error(`REPOSITORY must be in the format 'owner/repo'`)
+      }
+    }
 
     // Derive scan parameters.
     const escalations = args.ESCALATE?.split(',').map(severity => {
@@ -83,25 +91,15 @@ module.exports = {
       scanners.push(scanner)
     }
 
-    // Send telemtry: create repository/installation for imported vulnerabilities.
-    const importOwner = results.sarif.runs[0].tool?.driver?.name || 'unknown'
-    const importedRepoName = `${crypto.randomBytes(8).toString('hex')}`
-    const importedRepoFullName = `${importOwner}/${importedRepoName}`
-    try {
-      const res = await telemetry.send(`repositories/import`, {}, {repositoryName: importedRepoName, repositoryFullName: importedRepoFullName, owner: importOwner })
-      if (!res.ok) throw new Error(`[${res.status}] ${res.statusText}: ${await res.text()}`)
-    }
-    catch (error) {
-      log(`ERROR: ${error.message}${error?.cause?.code === 'ECONNREFUSED' ? ': CONNECTION REFUSED' : ''}`)
-      log(`Terminating with exit code 16. See 'radar help import' for list of possible exit codes.`)
-      return 0x10 // exit code
-    }
+    const importRepoFullName = args.REPOSITORY
+    const importRepoOwner = importRepoFullName.split('/')[0]
+    const importRepoName = importRepoFullName.split('/')[1]
 
     // Send telemetry: scan started.
     let scanID = undefined
     // TODO: Should pass scanID to the server; not read it from the server.
     try {
-      const res = await telemetry.send(`scans/started`, {}, { scanners, repoFullName: importedRepoFullName })
+      const res = await telemetry.send(`scans/started`, {}, { scanners, repoFullName: importRepoFullName })
       if (!res.ok) throw new Error(`[${res.status}] ${res.statusText}: ${await res.text()}`)
       const data = await res.json()
       scanID = data.scan_id
@@ -112,26 +110,52 @@ module.exports = {
       return 0x10 // exit code
     }
 
+    // possibly fetch repository metadata from ewa to populate the repo key or potentially use an additional configuration file to populate fields accurately
+    const scanMetadata = {
+      type: 'git',
+      repo: {
+        url: {
+          origin: '',
+          https: ''
+        },
+        source: {
+          type: '',
+          domain: ''
+        },
+        owner: importRepoOwner,
+        path: '',
+        name: importRepoName,
+        abbrevs: 0,
+        contributors: [],
+      },
+      commit: {
+        id: '',
+        time: Date.now(),
+        branch: '',
+        tags: []
+      }
+    }
+
     // Send telemetry: scan metadata.
-    let res = await telemetry.send(`scans/:scanID/metadata`, { scanID }, { metadata: {type: 'folder'}, repoFullName: importedRepoFullName})
+    let res = await telemetry.send(`scans/:scanID/metadata`, { scanID }, { metadata: scanMetadata, repoFullName: importRepoFullName})
     if (!res.ok) log(`WARNING: Scan metadata (stage 1) telemetry upload failed: [${res.status}] ${res.statusText}: ${await res.text()}`)
-    res = await telemetry.sendSensitive(`scans/:scanID/metadata`, { scanID }, { metadata: {type: 'folder'}, repoFullName: importedRepoFullName })
+    res = await telemetry.sendSensitive(`scans/:scanID/metadata`, { scanID }, { metadata: scanMetadata, repoFullName: importRepoFullName })
     if (!res.ok) log(`WARNING: Scan metadata (stage 2) telemetry upload failed: [${res.status}] ${res.statusText}: ${await res.text()}`)
 
     // Transform scan findings: treat warnings and notes as errors, and normalize location paths.
     if (escalations) results.sarif = SARIF.transforms.escalate(results.sarif, escalations)
 
     // Send telemetry: scan results.
-    await telemetry.sendSensitive(`scans/:scanID/results`, { scanID }, { findings: results.sarif, log: results.log, repoFullName: importedRepoFullName})
+    await telemetry.sendSensitive(`scans/:scanID/results`, { scanID }, { findings: results.sarif, log: results.log, repoFullName: importRepoFullName})
 
     // Analyze scan results: group findings by severity level.
-    const analysis = await telemetry.receiveSensitive(`scans/:scanID/summary`, { scanID, repoFullName: importedRepoFullName })
+    const analysis = await telemetry.receiveSensitive(`scans/:scanID/summary`, { scanID, repoFullName: importRepoFullName })
 
     if (!analysis?.findingsBySeverity) throw new Error(`Failed to retrieve analysis summary for scan '${scanID}'`)
     const summary = analysis.findingsBySeverity
 
     // Send telemetry: scan summary.
-    await telemetry.send(`scans/:scanID/completed`, { scanID }, { summary, repoFullName: importedRepoFullName })
+    await telemetry.send(`scans/:scanID/completed`, { scanID }, { summary, repoFullName: importRepoFullName })
 
     // Display summarized findings.
     if (!args.QUIET) {
