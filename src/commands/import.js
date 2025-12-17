@@ -1,9 +1,6 @@
-const crypto = require('node:crypto')
 const fs = require('node:fs')
 const path = require('node:path')
-const os = require('node:os')
 const SARIF = require('../util/sarif')
-const runner = require('../util/runner')
 module.exports = {
   summary: 'import vulnerabilities',
   args: {
