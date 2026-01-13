@@ -190,7 +190,7 @@ module.exports = {
     if (telemetry.enabled && scanID && !args.LOCAL) {
       let res = await telemetry.send(`scans/:scanID/metadata`, { scanID }, { metadata })
       if (!res.ok) log(`WARNING: Scan metadata (stage 1) telemetry upload failed: [${res.status}] ${res.statusText}: ${await res.text()}`)
-      res = await telemetry.sendSensitive(`scans/:scanID/metadata`, { scanID }, { metadata, repoFullName })
+      res = await telemetry.sendSensitive(`scans/:scanID/metadata`, { scanID }, { metadata })
       if (!res.ok) log(`WARNING: Scan metadata (stage 2) telemetry upload failed: [${res.status}] ${res.statusText}: ${await res.text()}`)
     }
 
