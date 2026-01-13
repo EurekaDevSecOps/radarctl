@@ -4,7 +4,7 @@ const { jwtDecode } = require('jwt-decode')
 
 class Telemetry {
   #EUREKA_AGENT_TOKEN = process.env.EUREKA_AGENT_TOKEN
-  #USER_AGENT = `RadarCLI/${pkg.version} (${pkg.pkgname}@${pkg.version}; ${process?.platform}-${process?.arch}; ${process?.release?.name}-${process?.version})`
+  #USER_AGENT = `RadarCLI/${pkg.version} (${pkg.name}@${pkg.version}; ${process?.platform}-${process?.arch}; ${process?.release?.name}-${process?.version})`
   #EWA_URL
 
   constructor() {
@@ -94,7 +94,7 @@ class Telemetry {
     const claims = this.#claims(token ?? this.#EUREKA_AGENT_TOKEN)
     if (path === `scans/:scanID/summary`) {
       const profileParam = process.env.EUREKA_PROFILE ? `&profileId=${process.env.EUREKA_PROFILE}` : ''
-      return `${claims.aud}/scans/${params.scanID}/summary?repoFullName=${encodeURIComponent(params.repoFullName)}${profileParam}`
+      return `${claims.aud}/scans/${params.scanID}/summary${profileParam}`
     }
     throw new Error(`Internal Error: Unknown telemetry event: GET ${path}`)
   }
@@ -106,10 +106,10 @@ class Telemetry {
 
   #toBody(path, body) {
     if (path === `scans/started`) body = { ...body, timestamp: DateTime.now().toISO(), repoFullName: body.repoFullName, profileId: process.env.EUREKA_PROFILE }
-    if (path === `scans/:scanID/completed`) body = { ...this.#toFindings(body.summary), timestamp: DateTime.now().toISO(), status: 'success', log: { sizeBytes: 0, warnings: 0, errors: 0, link: 'none' }, repoFullName: body.repoFullName, profileId: process.env.EUREKA_PROFILE, params: { id: '' }}
+    if (path === `scans/:scanID/completed`) body = { ...this.#toFindings(body.summary), timestamp: DateTime.now().toISO(), status: 'success', log: { sizeBytes: 0, warnings: 0, errors: 0, link: 'none' }, profileId: process.env.EUREKA_PROFILE, params: { id: '' }}
     if (path === `scans/:scanID/failed`) body = { ...body, timestamp: DateTime.now().toISO(), status: 'failure', findings: { total: 0, critical: 0, high: 0, med: 0, low: 0 }, log: { sizeBytes: 0, warnings: 0, errors: 0, link: 'none' }, params: { id: '' }}
     if (path === `scans/:scanID/metadata`) body = { metadata: body.metadata, repoFullName: body.repoFullName, profileId: process.env.EUREKA_PROFILE }
-    if (path === `scans/:scanID/results`) body = { findings: body.findings /* SARIF */, log: Buffer.from(body.log, 'utf8').toString('base64'), repoFullName: body.repoFullName, profileId: process.env.EUREKA_PROFILE  }
+    if (path === `scans/:scanID/results`) body = { findings: body.findings /* SARIF */, log: Buffer.from(body.log, 'utf8').toString('base64'), profileId: process.env.EUREKA_PROFILE  }
     return JSON.stringify(body)
   }
 
