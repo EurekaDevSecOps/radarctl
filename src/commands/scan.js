@@ -162,14 +162,13 @@ module.exports = {
     // Get target git metadata.
     const metadata = git.metadata(target)
     if (metadata.type === 'error') throw new Error(`${metadata.error.code}: ${metadata.error.details}`)
-    const repoFullName = `${metadata?.repo?.owner}/${metadata?.repo?.name}` || ""
 
     // Send telemetry: scan started.
     let scanID = undefined
     if (telemetry.enabled && !args.LOCAL) {
       // TODO: Should pass scanID to the server; not read it from the server.
       try {
-        const res = await telemetry.send(`scans/started`, {}, { scanners: scanners.map((s) => s.name), repoFullName })
+        const res = await telemetry.send(`scans/started`, {}, { scanners: scanners.map((s) => s.name) })
         if (!res.ok) throw new Error(`[${res.status}] ${res.statusText}: ${await res.text()}`)
         const data = await res.json()
         scanID = data.scan_id
