@@ -168,7 +168,7 @@ module.exports = {
     if (telemetry.enabled && !args.LOCAL) {
       // TODO: Should pass scanID to the server; not read it from the server.
       try {
-        const res = await telemetry.send(`scans/started`, {}, { scanners: scanners.map((s) => s.name) })
+        const res = await telemetry.send(`scans/started`, {}, { scanners: scanners.map((s) => s.name), metadata })
         if (!res.ok) throw new Error(`[${res.status}] ${res.statusText}: ${await res.text()}`)
         const data = await res.json()
         scanID = data.scan_id
@@ -185,12 +185,10 @@ module.exports = {
       }
     }
 
-    // Send telemetry: git metadata.
+    // Send telemetry: scan started (stage 2).
     if (telemetry.enabled && scanID && !args.LOCAL) {
-      let res = await telemetry.send(`scans/:scanID/metadata`, { scanID }, { metadata })
-      if (!res.ok) log(`WARNING: Scan metadata (stage 1) telemetry upload failed: [${res.status}] ${res.statusText}: ${await res.text()}`)
-      res = await telemetry.sendSensitive(`scans/:scanID/metadata`, { scanID }, { metadata })
-      if (!res.ok) log(`WARNING: Scan metadata (stage 2) telemetry upload failed: [${res.status}] ${res.statusText}: ${await res.text()}`)
+      const res = await telemetry.sendSensitive(`scans/:scanID/started`, { scanID }, { metadata })
+      if (!res.ok) log(`WARNING: Scan started (stage 2) telemetry upload failed: [${res.status}] ${res.statusText}: ${await res.text()}`)
     }
 
     // Run scanners.

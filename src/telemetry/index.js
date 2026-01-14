@@ -83,9 +83,9 @@ class Telemetry {
     const claims = this.#claims(token ?? this.#EUREKA_AGENT_TOKEN)
     const aud = claims.aud.replace(/\/$/, '')
     if (path === `scans/started`) return `${aud}/scans/started`
+    if (path === `scans/:scanID/started`) return `${aud}/scans/${params.scanID}/started`
     if (path === `scans/:scanID/completed`) return `${aud}/scans/${params.scanID}/completed`
     if (path === `scans/:scanID/failed`) return `${aud}/scans/${params.scanID}/completed`
-    if (path === `scans/:scanID/metadata`) return `${aud}/scans/${params.scanID}/metadata`
     if (path === `scans/:scanID/results`) return `${aud}/scans/${params.scanID}/results`
     throw new Error(`Internal Error: Unknown telemetry event: POST ${path}`)
   }
@@ -105,10 +105,10 @@ class Telemetry {
   }
 
   #toBody(path, body) {
-    if (path === `scans/started`) body = { ...body, timestamp: DateTime.now().toISO(), profileId: process.env.EUREKA_PROFILE }
+    if (path === `scans/started`) body = { ...body, metadata: body.metadata, timestamp: DateTime.now().toISO(), profileId: process.env.EUREKA_PROFILE }
+    if (path === `scans/:scanID/started`) body = { metadata: body.metadata, profileId: process.env.EUREKA_PROFILE }
     if (path === `scans/:scanID/completed`) body = { ...this.#toFindings(body.summary), timestamp: DateTime.now().toISO(), status: 'success', log: { sizeBytes: 0, warnings: 0, errors: 0, link: 'none' }, profileId: process.env.EUREKA_PROFILE, params: { id: '' }}
     if (path === `scans/:scanID/failed`) body = { ...body, timestamp: DateTime.now().toISO(), status: 'failure', findings: { total: 0, critical: 0, high: 0, med: 0, low: 0 }, log: { sizeBytes: 0, warnings: 0, errors: 0, link: 'none' }, params: { id: '' }}
-    if (path === `scans/:scanID/metadata`) body = { metadata: body.metadata, profileId: process.env.EUREKA_PROFILE }
     if (path === `scans/:scanID/results`) body = { findings: body.findings /* SARIF */, log: Buffer.from(body.log, 'utf8').toString('base64'), profileId: process.env.EUREKA_PROFILE  }
     return JSON.stringify(body)
   }
