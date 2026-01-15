@@ -11,15 +11,21 @@ const telemetry = require('./telemetry')
 
 All available telemetry events:
 ```js
-telemetry.send(`scans/:scanID/started`, { scanID }, { scanners })
+telemetry.send(`scans/started`, {}, { scanners, metadata })
+telemetry.sendSensitive(`scans/:scanID/started`, { scanID }, { metadata })
 telemetry.send(`scans/:scanID/completed`, { scanID }, { status, findings, log })
 telemetry.sendSensitive(`scans/:scanID/log`, { scanID }, log)
 telemetry.sendSensitive(`scans/:scanID/findings`, { scanID }, sarif)
 ```
 
-To send a telemetry event indicating that a scan has started:
+To send a telemetry event indicating that a scan has started (stage 1):
 ```js
-telemetry.send(`scans/:scanID/started`, { scanID }, { scanners })
+telemetry.send(`scans/started`, {}, { scanners, metadata })
+```
+
+To send a telemetry event indicating that a scan has started (stage 2):
+```js
+telemetry.sendSensitive(`scans/:scanID/started`, { scanID }, { metadata })
 ```
 
 To send a telemetry event indicating that a scan has completed:

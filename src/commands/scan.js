@@ -162,14 +162,13 @@ module.exports = {
     // Get target git metadata.
     const metadata = git.metadata(target)
     if (metadata.type === 'error') throw new Error(`${metadata.error.code}: ${metadata.error.details}`)
-    const repoFullName = `${metadata?.repo?.owner}/${metadata?.repo?.name}` || ""
 
     // Send telemetry: scan started.
     let scanID = undefined
     if (telemetry.enabled && !args.LOCAL) {
       // TODO: Should pass scanID to the server; not read it from the server.
       try {
-        const res = await telemetry.send(`scans/started`, {}, { scanners: scanners.map((s) => s.name), repoFullName })
+        const res = await telemetry.send(`scans/started`, {}, { scanners: scanners.map((s) => s.name), metadata })
         if (!res.ok) throw new Error(`[${res.status}] ${res.statusText}: ${await res.text()}`)
         const data = await res.json()
         scanID = data.scan_id
@@ -186,12 +185,10 @@ module.exports = {
       }
     }
 
-    // Send telemetry: git metadata.
+    // Send telemetry: scan started (stage 2).
     if (telemetry.enabled && scanID && !args.LOCAL) {
-      let res = await telemetry.send(`scans/:scanID/metadata`, { scanID }, { metadata, repoFullName})
-      if (!res.ok) log(`WARNING: Scan metadata (stage 1) telemetry upload failed: [${res.status}] ${res.statusText}: ${await res.text()}`)
-      res = await telemetry.sendSensitive(`scans/:scanID/metadata`, { scanID }, { metadata, repoFullName  })
-      if (!res.ok) log(`WARNING: Scan metadata (stage 2) telemetry upload failed: [${res.status}] ${res.statusText}: ${await res.text()}`)
+      const res = await telemetry.sendSensitive(`scans/:scanID/started`, { scanID }, { metadata })
+      if (!res.ok) log(`WARNING: Scan started (stage 2) telemetry upload failed: [${res.status}] ${res.statusText}: ${await res.text()}`)
     }
 
     // Run scanners.
@@ -222,14 +219,14 @@ module.exports = {
 
     // Send telemetry: scan results.
     if (telemetry.enabled && scanID && !args.LOCAL) {
-      const res = await telemetry.sendSensitive(`scans/:scanID/results`, { scanID }, { findings: results.sarif, log: results.log, repoFullName })
+      const res = await telemetry.sendSensitive(`scans/:scanID/results`, { scanID }, { findings: results.sarif, log: results.log })
       if (!res.ok) log(`WARNING: Scan results telemetry upload failed: [${res.status}] ${res.statusText}: ${await res.text()}`)
     }
 
     // Analyze scan results: group findings by severity level.
     let summary
     if (telemetry.enabled && scanID && !args.LOCAL) {
-      const analysis = await telemetry.receiveSensitive(`scans/:scanID/summary`, { scanID, repoFullName })
+      const analysis = await telemetry.receiveSensitive(`scans/:scanID/summary`, { scanID })
       if (!analysis?.findingsBySeverity) throw new Error(`Failed to retrieve analysis summary for scan '${scanID}'`)
       summary = analysis.findingsBySeverity
     } else {
@@ -238,7 +235,7 @@ module.exports = {
 
     // Send telemetry: scan summary.
     if (telemetry.enabled && scanID && !args.LOCAL) {
-      const res = await telemetry.send(`scans/:scanID/completed`, { scanID }, { summary, repoFullName })
+      const res = await telemetry.send(`scans/:scanID/completed`, { scanID }, { summary })
       if (!res.ok) log(`WARNING: Scan status (completed) telemetry upload failed: [${res.status}] ${res.statusText}: ${await res.text()}`)
     }
 
