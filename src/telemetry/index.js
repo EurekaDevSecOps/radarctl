@@ -103,8 +103,8 @@ class Telemetry {
   }
 
   #toBody(path, body) {
-    if (path === `scans/started`) body = { ...body, timestamp: DateTime.now().toISO(), profileId: process.env.EUREKA_PROFILE }
-    if (path === `scans/:scanID/started`) body = {...body, profileId: process.env.EUREKA_PROFILE }
+    if (path === `scans/started`) body = { ...body, profileId: process.env.EUREKA_PROFILE }
+    if (path === `scans/:scanID/started`) body = { ...body, profileId: process.env.EUREKA_PROFILE }
     if (path === `scans/:scanID/completed`) body = { ...this.#toFindings(body.summary), timestamp: DateTime.now().toISO(), status: 'success', log: { sizeBytes: 0, warnings: 0, errors: 0, link: 'none' }, profileId: process.env.EUREKA_PROFILE, params: { id: '' }}
     if (path === `scans/:scanID/failed`) body = { ...body, timestamp: DateTime.now().toISO(), status: 'failure', findings: { total: 0, critical: 0, high: 0, med: 0, low: 0 }, log: { sizeBytes: 0, warnings: 0, errors: 0, link: 'none' }, params: { id: '' }}
     if (path === `scans/:scanID/results`) body = { findings: body.findings /* SARIF */, log: Buffer.from(body.log, 'utf8').toString('base64'), profileId: process.env.EUREKA_PROFILE  }
@@ -122,7 +122,6 @@ class Telemetry {
       }
     }
   }
-
 }
 
 module.exports = {
