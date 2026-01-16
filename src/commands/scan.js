@@ -216,7 +216,6 @@ module.exports = {
     // Write findings to the destination SARIF file.
     if (outfile) fs.writeFileSync(outfile, JSON.stringify(results.sarif, null, 2))
 
-
     // Send telemetry: scan results.
     if (telemetry.enabled && scanID && !args.LOCAL) {
       const res = await telemetry.sendSensitive(`scans/:scanID/results`, { scanID }, { findings: results.sarif, log: results.log })
@@ -268,3 +267,4 @@ module.exports = {
 
     return exitCode
   }
+}
