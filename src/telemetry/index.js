@@ -92,10 +92,8 @@ class Telemetry {
 
   #toReceiveURL(path, params, token) {
     const claims = this.#claims(token ?? this.#EUREKA_AGENT_TOKEN)
-    if (path === `scans/:scanID/summary`) {
-      const profileParam = process.env.EUREKA_PROFILE ? `?profileId=${process.env.EUREKA_PROFILE}` : ''
-      return `${claims.aud}/scans/${params.scanID}/summary${profileParam}`
-    }
+    const aud = claims.aud.replace(/\/$/, '')
+    if (path === `scans/:scanID/summary`) return `${aud}/scans/${params.scanID}/summary?profileId=${process.env.EUREKA_PROFILE}`
     throw new Error(`Internal Error: Unknown telemetry event: GET ${path}`)
   }
 
