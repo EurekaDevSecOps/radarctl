@@ -268,4 +268,3 @@ module.exports = {
 
     return exitCode
   }
-}
