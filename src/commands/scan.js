@@ -4,6 +4,8 @@ const path = require('node:path')
 const os = require('node:os')
 const SARIF = require('../util/sarif')
 const runner = require('../util/runner')
+const { DateTime } = require('luxon')
+
 module.exports = {
   summary: 'scan for vulnerabilities',
   args: {
