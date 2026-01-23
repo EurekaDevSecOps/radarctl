@@ -96,7 +96,7 @@ class Telemetry {
     if (path === `scans/:scanID/summary`) {
       const profileId = process.env.EUREKA_PROFILE
       const base = `${aud}/scans/${params.scanID}/summary`
-      return profileId ? `${base}?profileParam=${profileId}` : base
+      return profileId ? `${base}?profileId=${profileId}` : base
     }
     throw new Error(`Internal Error: Unknown telemetry event: GET ${path}`)
   }
