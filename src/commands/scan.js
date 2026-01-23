@@ -4,6 +4,8 @@ const path = require('node:path')
 const os = require('node:os')
 const SARIF = require('../util/sarif')
 const runner = require('../util/runner')
+const { DateTime } = require('luxon')
+
 module.exports = {
   summary: 'scan for vulnerabilities',
   args: {
@@ -159,12 +161,18 @@ module.exports = {
       log(`INFO: Running a local scan.\n`)
     }
 
+    // Get target git metadata.
+    const metadata = git.metadata(target)
+    if (metadata.type === 'error') throw new Error(`${metadata.error.code}: ${metadata.error.details}`)
+
     // Send telemetry: scan started.
     let scanID = undefined
+    const timestamp = DateTime.now().toISO()
+
     if (telemetry.enabled && !args.LOCAL) {
       // TODO: Should pass scanID to the server; not read it from the server.
       try {
-        const res = await telemetry.send(`scans/started`, {}, { scanners: scanners.map((s) => s.name) })
+        const res = await telemetry.send(`scans/started`, {}, { scanners: scanners.map((s) => s.name), metadata, timestamp })
         if (!res.ok) throw new Error(`[${res.status}] ${res.statusText}: ${await res.text()}`)
         const data = await res.json()
         scanID = data.scan_id
@@ -181,14 +189,10 @@ module.exports = {
       }
     }
 
-    // Send telemetry: git metadata.
-    const metadata = git.metadata(target)
-    if (metadata.type === 'error') throw new Error(`${metadata.error.code}: ${metadata.error.details}`)
+    // Send telemetry: scan started (stage 2).
     if (telemetry.enabled && scanID && !args.LOCAL) {
-      let res = await telemetry.send(`scans/:scanID/metadata`, { scanID }, { metadata })
-      if (!res.ok) log(`WARNING: Scan metadata (stage 1) telemetry upload failed: [${res.status}] ${res.statusText}: ${await res.text()}`)
-      res = await telemetry.sendSensitive(`scans/:scanID/metadata`, { scanID }, { metadata })
-      if (!res.ok) log(`WARNING: Scan metadata (stage 2) telemetry upload failed: [${res.status}] ${res.statusText}: ${await res.text()}`)
+      const res = await telemetry.sendSensitive(`scans/:scanID/started`, { scanID }, { metadata, timestamp })
+      if (!res.ok) log(`WARNING: Scan started (stage 2) telemetry upload failed: [${res.status}] ${res.statusText}: ${await res.text()}`)
     }
 
     // Run scanners.
@@ -234,7 +238,7 @@ module.exports = {
 
     // Send telemetry: scan summary.
     if (telemetry.enabled && scanID && !args.LOCAL) {
-      const res = await telemetry.send(`scans/:scanID/completed`, { scanID }, summary)
+      const res = await telemetry.send(`scans/:scanID/completed`, { scanID }, { summary })
       if (!res.ok) log(`WARNING: Scan status (completed) telemetry upload failed: [${res.status}] ${res.statusText}: ${await res.text()}`)
     }
 
