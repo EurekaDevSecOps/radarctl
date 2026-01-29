@@ -12,8 +12,7 @@ jobs:
     name: Security Scan
     runs-on: ubuntu-latest
     steps:
-      - uses: eurekadevsecops/scan-action@v1
+      - uses: eurekadevsecops/scan-action@v2
         with:
           scanners: gitleaks,opengrep,grype
           token: ${{ secrets.EUREKA_AGENT_TOKEN }}
-          profile: ${{ vars.EUREKA_PROFILE }}

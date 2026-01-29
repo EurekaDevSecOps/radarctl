@@ -65,12 +65,11 @@ module.exports = {
 
     Runs entirely on your machine — by default, Radar CLI doesn’t upload any findings.
     Your vulnerabilities stay local and private. To upload results to Eureka ASPM,
-    provide your API credentials via two environment variables: 'EUREKA_AGENT_TOKEN'
-    (your API token) and 'EUREKA_PROFILE' (your profile ID). When these are set, Radar CLI
-    automatically uploads results after each scan — letting you view your full scan 
-    history and all findings in the Eureka ASPM Dashboard. To prevent Radar CLI from
-    uploading scan findings even when you have 'EUREKA_AGENT_TOKEN' and 'EUREKA_PROFILE'
-    set, you can pass the LOCAL option on the command line.
+    provide your API credentials through the 'EUREKA_AGENT_TOKEN' environment variable.
+    When set, Radar CLI automatically uploads results after each scan — letting you view
+    your full scan history and all findings in the Eureka ASPM Dashboard. To prevent
+    Radar CLI from uploading scan findings even when you have 'EUREKA_AGENT_TOKEN' set,
+    you can pass the LOCAL option on the command line.
 
     Exit codes:
          0 - Clean and successful scan. No errors, warnings, or notes.
