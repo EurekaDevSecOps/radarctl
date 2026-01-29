@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.9.7](https://github.com/EurekaDevSecOps/radarctl/compare/v1.9.6...v1.9.7) (2026-01-29)
+
+
+### CI/CD
+
+* Upgrade to scan-action@v2 ([#55](https://github.com/EurekaDevSecOps/radarctl/issues/55)) ([48a26a3](https://github.com/EurekaDevSecOps/radarctl/commit/48a26a3f8a5874cb9d2ea976a695ee53a8eb5940))
+
 ## [1.9.6](https://github.com/EurekaDevSecOps/radarctl/compare/v1.9.5...v1.9.6) (2026-01-23)
 
 
