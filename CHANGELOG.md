@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.9.8](https://github.com/EurekaDevSecOps/radarctl/compare/v1.9.7...v1.9.8) (2026-02-04)
+
+
+### CI/CD
+
+* **commitlint:** Fix commitlint GHA errors ([#58](https://github.com/EurekaDevSecOps/radarctl/issues/58)) ([b27d64e](https://github.com/EurekaDevSecOps/radarctl/commit/b27d64e5ddab6fad389aa1489173c3a992633ff6))
+
 ## [1.9.7](https://github.com/EurekaDevSecOps/radarctl/compare/v1.9.6...v1.9.7) (2026-01-29)
 
 
