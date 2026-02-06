@@ -25,7 +25,8 @@ module.exports = {
     { name: 'LOCAL', short: 'l', long: 'local', type: 'boolean', description: 'local scan (no upload of findings to Eureka)' },
     { name: 'OUTPUT', short: 'o', long: 'output', type: 'string', description: 'output SARIF file' },
     { name: 'QUIET', short: 'q', long: 'quiet', type: 'boolean', description: 'suppress stdout logging' },
-    { name: 'SCANNERS', short: 's', long: 'scanners', type: 'string', description: 'list of scanners to use' }
+    { name: 'SCANNERS', short: 's', long: 'scanners', type: 'string', description: 'list of scanners to use' },
+    { name: 'SCAN_ID', short: 'sid', long: 'scan-id', type: 'string', description: 'existing scan ID to associate results with' }
   ],
   description: `
     Scans a target for vulnerabilities. Defaults to displaying findings on stdout.
@@ -165,13 +166,13 @@ module.exports = {
     if (metadata.type === 'error') throw new Error(`${metadata.error.code}: ${metadata.error.details}`)
 
     // Send telemetry: scan started.
-    let scanID = undefined
+    let scanID = args.SCAN_ID ?? undefined
     const timestamp = DateTime.now().toISO()
 
     if (telemetry.enabled && !args.LOCAL) {
       // TODO: Should pass scanID to the server; not read it from the server.
       try {
-        const res = await telemetry.send(`scans/started`, {}, { scanners: scanners.map((s) => s.name), metadata, timestamp })
+        const res = await telemetry.send(`scans/started`, {}, { scanners: scanners.map((s) => s.name), scanID, metadata, timestamp })
         if (!res.ok) throw new Error(`[${res.status}] ${res.statusText}: ${await res.text()}`)
         const data = await res.json()
         scanID = data.scan_id
