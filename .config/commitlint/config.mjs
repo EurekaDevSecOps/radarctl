@@ -22,6 +22,10 @@ const scopes = {
 // @tip: git branch name = feat/PE-123 => default issue = PE-123
 const issue = execSync('git rev-parse --abbrev-ref HEAD').toString().trim().split('/').at(-1)
 
+const semver = String.raw`(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-((?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\.(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\+([0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?`
+const pr = String.raw`\(\#[1-9]\d*\)`
+const pattern = new RegExp(`^v${semver} ${pr}`)
+
 const Configuration = {
   /*
    * Resolve and load @commitlint/config-conventional from node_modules.
@@ -32,7 +36,7 @@ const Configuration = {
    * Resolve and load conventional-changelog-atom from node_modules.
    * Referenced packages must be installed
    */
-  parserPreset: 'conventional-changelog-atom',
+  parserPreset: 'conventional-changelog-conventionalcommits',
   /*
    * Resolve and load @commitlint/format from node_modules.
    * Referenced package must be installed
@@ -58,7 +62,7 @@ const Configuration = {
    * To see full list, check https://github.com/conventional-changelog/commitlint/blob/master/%40commitlint/is-ignored/src/defaults.ts.
    * To disable those ignores and run rules always, set `defaultIgnores: false` as shown below.
    */
-  ignores: [(commit) => commit === ''],
+  ignores: [(commit) => commit === '', (commit) => pattern.test(commit)],
   /*
    * Whether commitlint uses the default ignore rules, see the description above.
    */
