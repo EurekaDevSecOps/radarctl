@@ -1,6 +1,47 @@
 const { execSync } = require('node:child_process')
 const hostedGitInfo = require('hosted-git-info')
 
+
+function isAzureDevOpsUrl(originUrl) {
+  const knownAzureDomains = ["dev.azure.com", "visualstudio.com"];
+
+  return knownAzureDomains.some((url) => originUrl.includes(url));
+}
+
+/**
+ * Azure DevOps formats:
+ * - `https://TOKEN@dev.azure.com/<org>/<project>/_git/<repo>`
+ * - `https://pat:TOKEN@dev.azure.com/<org>/<project>/_git/<repo>` (the "pat" here can be any arbitrary string)
+ */
+function parseAzureDevOpsUrl(originUrl) {
+  // Strip credentials from URL
+  const cleanUrl = originUrl.replace(/https:\/\/([^@:]+:)?[^@]+@/, "https://");
+  const url = new URL(cleanUrl);
+
+  const pathParts = url.pathname.split("/").filter((p) => p);
+  if (pathParts.length < 4 || pathParts[2] !== "_git") {
+    throw new Error(`Invalid Azure DevOps URL format: ${originUrl}`);
+  }
+
+  return {
+    https: () => cleanUrl,
+    type: "azure",
+    domain: url.hostname,
+    // project name
+    user: pathParts[1], 
+    // repo name
+    project: pathParts[3], 
+  };
+}
+
+function parseGitInfoFromUrl(originUrl) {
+  if (isAzureDevOpsUrl(originUrl)) {
+    return parseAzureDevOpsUrl(originUrl);
+  }
+
+  return hostedGitInfo.fromUrl(originUrl, { noGitPlus: true });
+}
+
 function metadata(folder) {
   try {
     // Determine if we're scanning a valid git repo.
@@ -11,7 +52,9 @@ function metadata(folder) {
 
     // Get the repo name and owner.
     const originUrl = execSync('git config --get remote.origin.url', { cwd: folder }).toString().trim()
-    const info = hostedGitInfo.fromUrl(originUrl, { noGitPlus: true })
+
+    const info = parseGitInfoFromUrl(originUrl)
+    
     const ownerPath = info.user.split('/')
 
     // Get the branch name.
