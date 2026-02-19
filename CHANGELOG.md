@@ -1,5 +1,23 @@
 # Changelog
 
+## [1.9.8](https://github.com/EurekaDevSecOps/radarctl/compare/v1.9.7...v1.9.8) (2026-02-19)
+
+
+### Fixes
+
+* **scans:** Add handling for ADO git URLs ([#61](https://github.com/EurekaDevSecOps/radarctl/issues/61)) ([cad3c13](https://github.com/EurekaDevSecOps/radarctl/commit/cad3c13ad90d2866b7ad019d145882e0955a8243))
+* **scans:** Update scan command to accept optional scan ID from args ([#60](https://github.com/EurekaDevSecOps/radarctl/issues/60)) ([3f7b2f9](https://github.com/EurekaDevSecOps/radarctl/commit/3f7b2f9881a201116f54752ce27bd5e36d652f23))
+
+
+### Code Refactoring
+
+* **telemetry:** Add a reportScanFailure wrapper for telemetry send/receive ([#57](https://github.com/EurekaDevSecOps/radarctl/issues/57)) ([9b2b8aa](https://github.com/EurekaDevSecOps/radarctl/commit/9b2b8aad4a59e9312bb5713a4aaf5b154f6e390b))
+
+
+### CI/CD
+
+* **commitlint:** Fix commitlint GHA errors ([#58](https://github.com/EurekaDevSecOps/radarctl/issues/58)) ([b27d64e](https://github.com/EurekaDevSecOps/radarctl/commit/b27d64e5ddab6fad389aa1489173c3a992633ff6))
+
 ## [1.9.7](https://github.com/EurekaDevSecOps/radarctl/compare/v1.9.6...v1.9.7) (2026-01-29)
 
 
