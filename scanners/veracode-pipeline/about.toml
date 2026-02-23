@@ -1,0 +1,5 @@
+name = "veracode-pipeline"
+title = "Veracode Pipeline"
+description = "Identify application security findings in source code. Requires Veracode API key."
+categories = [ "SAST" ]
+cmd = "${assets}/run.sh ${target} ${assets} ${output}"
