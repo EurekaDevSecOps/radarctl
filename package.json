@@ -1,6 +1,6 @@
 {
   "name": "@eurekadevsecops/radar",
-  "version": "1.8.4",
+  "version": "1.9.8",
   "description": "Radar is an open-source orchestrator of security scanners.",
   "homepage": "https://www.eurekadevsecops.com/radar",
   "keywords": [
@@ -20,6 +20,8 @@
     "radar": "cli.js"
   },
   "scripts": {
+    "commit": "npx cz",
+    "prepare": "husky || true",
     "test": "standard"
   },
   "repository": {
@@ -37,6 +39,21 @@
     "tiny-spinner": "^2.0.5"
   },
   "devDependencies": {
+    "@commitlint/cli": "^20.4.1",
+    "@commitlint/config-conventional": "^20.4.1",
+    "@commitlint/cz-commitlint": "^20.1.0",
+    "commitizen": "^4.3.1",
+    "commitlint-plugin-selective-scope": "^1.0.1",
+    "conventional-changelog-atom": "^5.0.0",
+    "cz-conventional-changelog": "^3.3.0",
+    "cz-git": "^1.12.0",
+    "husky": "^9.1.7",
     "standard": "*"
+  },
+  "config": {
+    "commitizen": {
+      "path": "cz-git",
+      "czConfig": ".config/commitlint/cz.config.mjs"
+    }
   }
 }

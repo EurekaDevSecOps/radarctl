@@ -1,0 +1,5 @@
+name = "veracode-sca"
+title = "Veracode SCA"
+description = "Finds known vulnerabilities in dependencies. Requires SRCCLR_API_TOKEN."
+categories = [ "SCA" ]
+cmd = "${assets}/run.sh ${target} ${assets} ${output}"
