@@ -164,7 +164,7 @@ module.exports = {
 
     const isLocal = !telemetry.enabled || args.LOCAL
 
-    analytics.emitPosthogEvent('scan_command_started', {
+    analytics.track('scan_command_started', {
       scanners: scanners.map((s) => s.name),
       scanners_count: scanners.length,
       local: isLocal

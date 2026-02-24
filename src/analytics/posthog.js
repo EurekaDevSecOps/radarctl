@@ -52,7 +52,7 @@ class PosthogAnalytics {
   async shutdown() {
     if (!this.#client) return
     try {
-      await this.#client._shutdown(2000)
+      await this.#client.shutdown(2000)
     } catch (error) {}
   }
 
