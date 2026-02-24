@@ -17,6 +17,7 @@ module.exports = {
   options: [
     { name: 'ESCALATE', short: 'e', long: 'escalate', type: 'string', description: 'severities to treat as high/error' },
     { name: 'FORMAT', short: 'f', long: 'format', type: 'string', description: 'severity format' },
+    { name: 'DISABLE_ANALYTICS', short: 'noa', long: 'disable-analytics', type: 'boolean', description: 'disable analytics for this run' },
     { name: 'QUIET', short: 'q', long: 'quiet', type: 'boolean', description: 'suppress stdout logging' }
   ],
   description: `
@@ -43,10 +44,14 @@ module.exports = {
     '$ radar import -f sarif -e warning,note scan.sarif ' + '(treat lower severities as errors)'.grey
   ],
   run: async (toolbox, args) => {
-    const { log, scanners: availableScanners, telemetry } = toolbox
+    const { log, scanners: availableScanners, telemetry, analytics } = toolbox
 
     // Set defaults for args and options.
     args.FORMAT ??= 'security'
+    args.DISABLE_ANALYTICS ??= false
+
+    // Configure analytics for this run.
+    analytics.setEnabled(!args.DISABLE_ANALYTICS)
 
     // Normalize and/or rewrite args and options.
     args.INPUT = path.resolve(path.normalize(args.INPUT))
@@ -82,6 +87,8 @@ module.exports = {
       const scanner = run.tool.driver?.properties?.scanner_name ?? run.tool.driver.name
       scanners.push(scanner)
     }
+
+    analytics.track('import_started', { scanners, scanners_count: scanners.length })
 
     // Send telemetry: scan started.
     let scanID = undefined
