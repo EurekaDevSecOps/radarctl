@@ -10,7 +10,7 @@ class PosthogAnalytics {
   #client
   #user
   #identified = false
-  #analyticsEnabled = true
+  #analyticsDisabled = false
 
   constructor() {
     const apiKey = process.env.POSTHOG_API_KEY
@@ -29,7 +29,7 @@ class PosthogAnalytics {
   }
 
   capture(event, properties = {}) {
-    if (!this.#client || !this.#analyticsEnabled) return
+    if (!this.#client || this.#analyticsDisabled) return
     // for local scans, generate a random distinctId 
     const distinctId = this.#user?.sub || (event === 'local_scan_started' ? crypto.randomUUID() : undefined)
     if (!distinctId) return
@@ -46,7 +46,7 @@ class PosthogAnalytics {
   }
 
   setEnabled(enabled) {
-    this.#analyticsEnabled = !enabled
+    this.#analyticsDisabled = !enabled
   }
 
   async shutdown() {
