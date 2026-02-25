@@ -165,6 +165,7 @@ module.exports = {
     const isLocal = !telemetry.enabled || args.LOCAL
 
     analytics.track('scan_command_started', {
+      flags: args,
       scanners: scanners.map((s) => s.name),
       scanners_count: scanners.length,
       local: isLocal
@@ -173,6 +174,7 @@ module.exports = {
     if (isLocal) {
       log(`INFO: Running a local scan.\n`)
       analytics.track('local_scan_started', {
+        flags: args,
         scanners: scanners.map((s) => s.name),
         scanners_count: scanners.length
       })
