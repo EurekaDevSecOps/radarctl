@@ -23,6 +23,7 @@ module.exports = {
     { name: 'ESCALATE', short: 'e', long: 'escalate', type: 'string', description: 'severities to treat as high/error' },
     { name: 'FORMAT', short: 'f', long: 'format', type: 'string', description: 'severity format' },
     { name: 'LOCAL', short: 'l', long: 'local', type: 'boolean', description: 'local scan (no upload of findings to Eureka)' },
+    { name: 'DISABLE_ANALYTICS', short: 'noa', long: 'disable-analytics', type: 'boolean', description: 'disable analytics for this run' },
     { name: 'OUTPUT', short: 'o', long: 'output', type: 'string', description: 'output SARIF file' },
     { name: 'QUIET', short: 'q', long: 'quiet', type: 'boolean', description: 'suppress stdout logging' },
     { name: 'SCANNERS', short: 's', long: 'scanners', type: 'string', description: 'list of scanners to use' },
@@ -104,7 +105,7 @@ module.exports = {
     '$ radar scan -f sarif -e warning,note ' + '(treat lower severities as errors)'.grey
   ],
   run: async (toolbox, args, globals) => {
-    const { log, scanners: availableScanners, categories: availableCategories, telemetry, git } = toolbox
+    const { log, scanners: availableScanners, categories: availableCategories, telemetry, git, analytics } = toolbox
 
     // Enable debug mode, if needed.
     if (args.DEBUG) globals.debug = true
@@ -114,6 +115,10 @@ module.exports = {
     args.FORMAT ??= 'security'
     args.CATEGORIES ??= 'all'
     args.SCANNERS ??= ''
+    args.DISABLE_ANALYTICS ??= false
+
+    // Configure analytics for this run.
+    analytics.setEnabled(!args.DISABLE_ANALYTICS)
 
     // Normalize and/or rewrite args and options.
     args.TARGET = path.resolve(path.normalize(args.TARGET))
@@ -157,8 +162,20 @@ module.exports = {
     if (!categories.length) throw new Error(`CATEGORIES must be one or more of '${availableCategories.join("', '")}', or 'all'`)
     if (!scanners.length) throw new Error('No available scanners selected.')
 
-    if (!telemetry.enabled || args.LOCAL) {
+    const isLocal = !telemetry.enabled || args.LOCAL
+
+    analytics.track('scan_command_started', {
+      scanners: scanners.map((s) => s.name),
+      scanners_count: scanners.length,
+      local: isLocal
+    })
+
+    if (isLocal) {
       log(`INFO: Running a local scan.\n`)
+      analytics.track('local_scan_started', {
+        scanners: scanners.map((s) => s.name),
+        scanners_count: scanners.length
+      })
     }
 
     // Get target git metadata.
