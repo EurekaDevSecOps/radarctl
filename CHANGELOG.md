@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.10.0](https://github.com/EurekaDevSecOps/radarctl/compare/v1.9.8...v1.10.0) (2026-02-25)
+
+
+### Improvements
+
+* **PE-961:** Job path from Managed Scan runner being included in vulnerability results ([#63](https://github.com/EurekaDevSecOps/radarctl/issues/63)) ([f014598](https://github.com/EurekaDevSecOps/radarctl/commit/f0145985152b4d5cb5af7d10de7981777ce40ce4))
+
 ## [1.9.8](https://github.com/EurekaDevSecOps/radarctl/compare/v1.9.7...v1.9.8) (2026-02-19)
 
 
