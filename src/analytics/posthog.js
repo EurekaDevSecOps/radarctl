@@ -11,6 +11,7 @@ class PosthogAnalytics {
   #user
   #identified = false
   #analyticsDisabled = false
+  #serviceName = 'radar'
 
   constructor() {
     const apiKey = process.env.POSTHOG_API_KEY
@@ -30,8 +31,8 @@ class PosthogAnalytics {
 
   capture(event, properties = {}) {
     if (!this.#client || this.#analyticsDisabled) return
-    // for local scans, generate a random distinctId 
-    const distinctId = this.#user?.sub || (event === 'local_scan_started' ? crypto.randomUUID() : undefined)
+    // use the user's sub claim as the distinctId if we have it, otherwise generate a random UUID
+    const distinctId = this.#user?.sub || crypto.randomUUID()
     if (!distinctId) return
 
     // emit a PostHog identify event if we have a user and haven't already identified
@@ -74,6 +75,7 @@ class PosthogAnalytics {
   #withBaseProperties(properties) {
     return {
       ...properties,
+      service: this.#serviceName,
       name: pkg.name,
       version: pkg.version,
       node_version: process.version,
