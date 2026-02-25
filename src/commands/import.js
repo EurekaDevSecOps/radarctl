@@ -88,7 +88,7 @@ module.exports = {
       scanners.push(scanner)
     }
 
-    analytics.track('import_started', { scanners, scanners_count: scanners.length })
+    analytics.track('import_started', { flags: args, scanners, scanners_count: scanners.length })
 
     // Send telemetry: scan started.
     let scanID = undefined
