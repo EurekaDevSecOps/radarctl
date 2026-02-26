@@ -5,6 +5,8 @@ const posthog = new PosthogAnalytics()
 const ANALYTICS_EVENTS = {
   scan_command_started: 'scan_command_started',
   local_scan_started: 'local_scan_started',
+  scan_completed: 'scan_completed',
+  scan_failed: 'scan_failed',
   import_started: 'import_started',
   import_completed: 'import_completed',
   import_failed: 'import_failed',
