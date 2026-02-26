@@ -224,6 +224,13 @@ module.exports = {
     catch (error) {
       log(`\n${error}`)
       if (!args.QUIET) log('Scan NOT completed!')
+      analytics.track('scan_failed', {
+        flags: args,
+        scanners: scanners.map((s) => s.name),
+        scanners_count: scanners.length,
+        local: isLocal,
+        error: error?.message ?? String(error)
+      })
       if (telemetry.enabled && scanID && !args.LOCAL) {
         const res = await telemetry.send(`scans/:scanID/failed`, { scanID })
         if (!res.ok) log(`WARNING: Scan status (not completed) telemetry upload failed: [${res.status}] ${res.statusText}: ${await res.text()}`)
@@ -279,6 +286,15 @@ module.exports = {
       if (summary.warnings.length > 0) exitCode |= 0x2
       if (summary.notes.length > 0) exitCode |= 0x4
     }
+
+    analytics.track('scan_completed', {
+      flags: args,
+      scanners: scanners.map((s) => s.name),
+      scanners_count: scanners.length,
+      local: isLocal,
+      scan_id: scanID,
+      summary
+    })
 
     // Display the exit code.
     if (!args.QUIET && exitCode !== 0) {
