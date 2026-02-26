@@ -45,6 +45,7 @@ module.exports = {
   ],
   run: async (toolbox, args) => {
     const { log, scanners: availableScanners, telemetry, analytics } = toolbox
+    const scanners = []
 
     // Set defaults for args and options.
     args.FORMAT ??= 'security'
@@ -70,62 +71,70 @@ module.exports = {
       return severity
     })
 
-    // Check that telemetry is enabled.
-    if (!args.QUIET && !telemetry.enabled) {
-      log(`ERROR: Telemetry not enabled.`)
-      log(`Terminating with exit code 16. See 'radar help import' for list of possible exit codes.`)
-      return 0x10 // exit code
-    }
-
-    // Results include the log and the SARIF findings.
-    const results = { log: `Import from "${args.INPUT}"` }
-    results.sarif = JSON.parse(fs.readFileSync(args.INPUT, 'utf8'))
-
-    // Read scanner names from the input SARIF.
-    const scanners = []
-    for (const run of results.sarif.runs) {
-      const scanner = run.tool.driver?.properties?.scanner_name ?? run.tool.driver.name
-      scanners.push(scanner)
-    }
-
-    analytics.track('import_started', { flags: args, scanners, scanners_count: scanners.length })
-
-    // Send telemetry: scan started.
-    let scanID = undefined
-    // TODO: Should pass scanID to the server; not read it from the server.
     try {
-      const res = await telemetry.send(`scans/started`, {}, { scanners })
-      if (!res.ok) throw new Error(`[${res.status}] ${res.statusText}: ${await res.text()}`)
-      const data = await res.json()
-      scanID = data.scan_id
+      // Check that telemetry is enabled.
+      if (!args.QUIET && !telemetry.enabled) {
+        log(`ERROR: Telemetry not enabled.`)
+        log(`Terminating with exit code 16. See 'radar help import' for list of possible exit codes.`)
+        analytics.track('import_failed', { flags: args, error: 'telemetry_not_enabled' })
+        return 0x10 // exit code
+      }
+
+      // Results include the log and the SARIF findings.
+      const results = { log: `Import from "${args.INPUT}"` }
+      results.sarif = JSON.parse(fs.readFileSync(args.INPUT, 'utf8'))
+
+      // Read scanner names from the input SARIF.
+      for (const run of results.sarif.runs) {
+        const scanner = run.tool.driver?.properties?.scanner_name ?? run.tool.driver.name
+        scanners.push(scanner)
+      }
+
+      analytics.track('import_started', { flags: args, scanners, scanners_count: scanners.length })
+
+      // Send telemetry: scan started.
+      let scanID = undefined
+      // TODO: Should pass scanID to the server; not read it from the server.
+      try {
+        const res = await telemetry.send(`scans/started`, {}, { scanners })
+        if (!res.ok) throw new Error(`[${res.status}] ${res.statusText}: ${await res.text()}`)
+        const data = await res.json()
+        scanID = data.scan_id
+      }
+      catch (error) {
+        log(`ERROR: ${error.message}${error?.cause?.code === 'ECONNREFUSED' ? ': CONNECTION REFUSED' : ''}`)
+        log(`Terminating with exit code 16. See 'radar help import' for list of possible exit codes.`)
+        analytics.track('import_failed', { flags: args, scanners, scanners_count: scanners.length, error: error.message })
+        return 0x10 // exit code
+      }
+
+      // Transform scan findings: treat warnings and notes as errors, and normalize location paths.
+      if (escalations) results.sarif = SARIF.transforms.escalate(results.sarif, escalations)
+
+      // Send telemetry: scan results.
+      await telemetry.sendSensitive(`scans/:scanID/results`, { scanID }, { findings: results.sarif, log: results.log })
+
+      // Analyze scan results: group findings by severity level.
+      const analysis = await telemetry.receiveSensitive(`scans/:scanID/summary`, { scanID })
+      if (!analysis?.findingsBySeverity) throw new Error(`Failed to retrieve analysis summary for scan '${scanID}'`)
+      const summary = analysis.findingsBySeverity
+
+      // Send telemetry: scan summary.
+      await telemetry.send(`scans/:scanID/completed`, { scanID }, summary)
+
+      // Display summarized findings.
+      if (!args.QUIET) {
+        process.stdout.write('Imported ')
+        SARIF.visualizations.display_totals(summary, args.FORMAT, log, telemetry.enabled && scanID)
+      }
+
+      analytics.track('import_completed', { flags: args, scanners, scanners_count: scanners.length, scan_id: scanID, summary })
+
+      // Success.
+      return 0 // exit code
+    } catch (error) {
+      analytics.track('import_failed', { flags: args, scanners, scanners_count: scanners.length, error: error.message })
+      throw error
     }
-    catch (error) {
-      log(`ERROR: ${error.message}${error?.cause?.code === 'ECONNREFUSED' ? ': CONNECTION REFUSED' : ''}`)
-      log(`Terminating with exit code 16. See 'radar help import' for list of possible exit codes.`)
-      return 0x10 // exit code
-    }
-
-    // Transform scan findings: treat warnings and notes as errors, and normalize location paths.
-    if (escalations) results.sarif = SARIF.transforms.escalate(results.sarif, escalations)
-
-    // Send telemetry: scan results.
-    await telemetry.sendSensitive(`scans/:scanID/results`, { scanID }, { findings: results.sarif, log: results.log })
-
-    // Analyze scan results: group findings by severity level.
-    const analysis = await telemetry.receiveSensitive(`scans/:scanID/summary`, { scanID })
-    if (!analysis?.findingsBySeverity) throw new Error(`Failed to retrieve analysis summary for scan '${scanID}'`)
-    const summary = analysis.findingsBySeverity
-
-    // Send telemetry: scan summary.
-    await telemetry.send(`scans/:scanID/completed`, { scanID }, summary)
-
-    // Display summarized findings.
-    if (!args.QUIET) {
-      process.stdout.write('Imported ')
-      SARIF.visualizations.display_totals(summary, args.FORMAT, log, telemetry.enabled && scanID)
-    }
-
-    // Success.
-    return 0 // exit code
   }
 }
