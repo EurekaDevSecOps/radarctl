@@ -6,7 +6,7 @@ const ANALYTICS_EVENTS = {
   scan_command_started: 'scan_command_started',
   local_scan_started: 'local_scan_started',
   import_started: 'import_started',
-  help_command_invoked: 'help_command_invoked',
+  help_invoked: 'help_invoked',
   cli_installed: 'cli_installed'
 }
 
