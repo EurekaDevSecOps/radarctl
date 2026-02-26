@@ -23,7 +23,7 @@ const helpInvocation = getHelpInvocation(argv)
 if (helpInvocation) {
   const analyticsDisabled = argv.includes('--disable-analytics') || argv.includes('-noa')
   analytics.setEnabled(!analyticsDisabled)
-  analytics.track('help_command_invoked', helpInvocation)
+  analytics.track('help_invoked', helpInvocation)
 }
 
 // Check for updates (not in browsers).
