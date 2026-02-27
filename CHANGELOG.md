@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.11.0](https://github.com/EurekaDevSecOps/radarctl/compare/v1.10.0...v1.11.0) (2026-02-27)
+
+
+### Improvements
+
+* Add support for Veracode Pipeline (SAST) scanner ([#2](https://github.com/EurekaDevSecOps/radarctl/issues/2)) ([bf7f04b](https://github.com/EurekaDevSecOps/radarctl/commit/bf7f04b4fd8bfc5fd3e13b25365809209db80cec))
+
 ## [1.10.0](https://github.com/EurekaDevSecOps/radarctl/compare/v1.9.8...v1.10.0) (2026-02-25)
 
 
