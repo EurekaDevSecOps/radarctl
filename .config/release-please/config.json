@@ -1,0 +1,51 @@
+{
+  "always-update": true,
+  "bump-minor-pre-major": false,
+  "bump-patch-for-minor-pre-major": false,
+  "changelog-path": "CHANGELOG.md",
+  "changelog-sections": [
+    { "type": "feat", "section": "Improvements" },
+    { "type": "improve", "section": "Improvements" },
+    { "type": "perf", "section": "Improvements" },
+    { "type": "fix", "section": "Fixes" },
+    { "type": "docs", "section": "Documentation" },
+
+    { "type": "test", "section": "Tests", "hidden": false },
+    { "type": "refactor", "section": "Code Refactoring", "hidden": false },
+    { "type": "build", "section": "Build System", "hidden": false },
+    { "type": "ci", "section": "CI/CD", "hidden": false },
+    { "type": "deps", "section": "Dependencies", "hidden": false },
+    { "type": "chore", "section": "Miscellaneous Chores", "hidden": false },
+    { "type": "style", "section": "Styles", "hidden": false },
+    { "type": "revert", "section": "Reverts", "hidden": false },
+    { "type": "deploy", "section": "Deployments", "hidden": false }
+  ],
+  "component-no-space": true,
+  "draft": false,
+  "group-pull-request-title-pattern": "v${version}",
+  "include-component-in-tag": false,
+  "include-v-in-tag": true,
+  "prerelease": false,
+  "pull-request-header": "<!-- This PR was generated automatically by release-please-action -->",
+  "pull-request-title-pattern": "v${version}",
+  "release-type": "node",
+
+  "packages": {
+    ".": {
+      "component": "eureka-radarctl"
+    }
+  },
+
+  "plugins": [
+    {
+      "type": "node-workspace",
+      "updateAllPackages": true,
+      "updatePeerDependencies": true
+    },
+    {
+      "type": "sentence-case"
+    }
+  ],
+
+  "$schema": "https://raw.githubusercontent.com/googleapis/release-please/main/schemas/config.json"
+}
