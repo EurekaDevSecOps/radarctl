@@ -22,11 +22,11 @@ module.exports = {
     { name: 'DEBUG', short: 'd', long: 'debug', type: 'boolean', description: 'log detailed debug info to stdout' },
     { name: 'ESCALATE', short: 'e', long: 'escalate', type: 'string', description: 'severities to treat as high/error' },
     { name: 'FORMAT', short: 'f', long: 'format', type: 'string', description: 'severity format' },
+    { name: 'ID', short: 'i', long: 'id', type: 'string', description: 'scan ID to associate results with' },
     { name: 'LOCAL', short: 'l', long: 'local', type: 'boolean', description: 'local scan (no upload of findings to Eureka)' },
     { name: 'OUTPUT', short: 'o', long: 'output', type: 'string', description: 'output SARIF file' },
     { name: 'QUIET', short: 'q', long: 'quiet', type: 'boolean', description: 'suppress stdout logging' },
-    { name: 'SCANNERS', short: 's', long: 'scanners', type: 'string', description: 'list of scanners to use' },
-    { name: 'SCAN_ID', short: 'sid', long: 'scan-id', type: 'string', description: 'existing scan ID to associate results with' }
+    { name: 'SCANNERS', short: 's', long: 'scanners', type: 'string', description: 'list of scanners to use' }
   ],
   description: `
     Scans a target for vulnerabilities. Defaults to displaying findings on stdout.
@@ -166,11 +166,10 @@ module.exports = {
     if (metadata.type === 'error') throw new Error(`${metadata.error.code}: ${metadata.error.details}`)
 
     // Send telemetry: scan started.
-    let scanID = args.SCAN_ID ?? undefined
+    let scanID = args.ID ?? undefined
     const timestamp = DateTime.now().toISO()
 
     if (telemetry.enabled && !args.LOCAL) {
-      // TODO: Should pass scanID to the server; not read it from the server.
       try {
         const res = await telemetry.send(`scans/started`, {}, { scanners: scanners.map((s) => s.name), scanID, metadata, timestamp })
         if (!res.ok) throw new Error(`[${res.status}] ${res.statusText}: ${await res.text()}`)
@@ -248,6 +247,12 @@ module.exports = {
       SARIF.visualizations.display_findings(summary, args.FORMAT, log)
       if (outfile) log(`Findings exported to ${outfile}`)
       SARIF.visualizations.display_totals(summary, args.FORMAT, log, telemetry.enabled && scanID && !args.LOCAL)
+    }
+
+    // Display link to scan results in the dashboard.
+    if (telemetry.enabled && scanID && !args.QUIET) {
+      const scanUrl = `https://app.eurekadevsecops.com/scans?scans=${scanID}`
+      log(`View scan findings in the Eureka dashboard: ${scanUrl}`)
     }
 
     // Determine the correct exit code.
