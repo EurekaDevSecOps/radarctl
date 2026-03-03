@@ -15,7 +15,7 @@ module.exports = {
     { name: 'ESCALATE', short: 'e', long: 'escalate', type: 'string', description: 'severities to treat as high/error' },
     { name: 'FORMAT', short: 'f', long: 'format', type: 'string', description: 'severity format' },
     { name: 'QUIET', short: 'q', long: 'quiet', type: 'boolean', description: 'suppress stdout logging' },
-    { name: 'REPOSITORY', short: 'r', long: 'repository', type: 'string', description: 'corresponding Eureka repository to imp', required: true}
+    { name: 'REPOSITORY', short: 'r', long: 'repository', type: 'string', description: 'repository in owner/repo format (optional)' }
   ],
   description: `
     Imports vulnerabilities from the input SARIF file given by INPUT argument.
@@ -56,9 +56,9 @@ module.exports = {
       if (args.FORMAT === 'security' && severity !== 'moderate' && severity !== 'low') throw new Error(`Severity to escalate must be 'moderate' or 'low'`)
       if (args.FORMAT === 'sarif' && severity !== 'warning' && severity !== 'note') throw new Error(`Severity to escalate must be 'warning' or 'note'`)
     })
-    if(!args.REPOSITORY) {
+    if (args.REPOSITORY) {
       const repositoryFormat = /^([a-zA-Z0-9_.-]+)\/([a-zA-Z0-9_.-]+)$/
-      if(!repositoryFormat.test(args.REPOSITORY)) {
+      if (!repositoryFormat.test(args.REPOSITORY)) {
         throw new Error(`REPOSITORY must be in the format 'owner/repo'`)
       }
     }
@@ -88,11 +88,34 @@ module.exports = {
       scanners.push(scanner)
     }
 
-    const importRepoFullName = args.REPOSITORY
-    const importRepoOwner = importRepoFullName.split('/')[0]
-    const importRepoName = importRepoFullName.split('/')[1]
+    const repositoryFromSarif = () => {
+      for (const run of results.sarif.runs ?? []) {
+        const repo = run?.properties?.repository
+        if (!repo) continue
+        if (typeof repo?.fullName === 'string') return repo.fullName
+      }
+      return undefined
+    }
 
-    // possibly fetch repository metadata from ewa to populate the repo key or potentially use an additional configuration file to populate fields accurately
+    // use the repository from the sarif, if not present, default to the repository provided via the CLI flag
+    const repositoryValue = repositoryFromSarif() || args.REPOSITORY
+
+    const parseRepository = (value) => {
+      if (!value) return null
+      const ownerRepoMatch = value.match(/^([a-zA-Z0-9_.-]+)\/([a-zA-Z0-9_.-]+)$/)
+      if (!ownerRepoMatch) return null
+      return { fullName: value, owner: ownerRepoMatch[1], name: ownerRepoMatch[2] }
+    }
+
+    const parsedRepository = repositoryValue ? parseRepository(repositoryValue) : null
+
+    // reject vulnerability import if it does not have a repository specified 
+    if (repositoryValue && !parsedRepository) throw new Error(`REPOSITORY must be in the format 'owner/repo'`)
+
+    const importRepoOwner = parsedRepository?.owner ?? ''
+    const importRepoName = parsedRepository?.name ?? ''
+
+    // construct scan metadata 
     const scanMetadata = {
       type: 'git',
       repo: {
