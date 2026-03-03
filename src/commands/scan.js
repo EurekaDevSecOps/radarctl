@@ -25,7 +25,8 @@ module.exports = {
     { name: 'LOCAL', short: 'l', long: 'local', type: 'boolean', description: 'local scan (no upload of findings to Eureka)' },
     { name: 'OUTPUT', short: 'o', long: 'output', type: 'string', description: 'output SARIF file' },
     { name: 'QUIET', short: 'q', long: 'quiet', type: 'boolean', description: 'suppress stdout logging' },
-    { name: 'SCANNERS', short: 's', long: 'scanners', type: 'string', description: 'list of scanners to use' }
+    { name: 'SCANNERS', short: 's', long: 'scanners', type: 'string', description: 'list of scanners to use' },
+    { name: 'SCAN_ID', short: 'sid', long: 'scan-id', type: 'string', description: 'existing scan ID to associate results with' }
   ],
   description: `
     Scans a target for vulnerabilities. Defaults to displaying findings on stdout.
@@ -65,12 +66,11 @@ module.exports = {
 
     Runs entirely on your machine — by default, Radar CLI doesn’t upload any findings.
     Your vulnerabilities stay local and private. To upload results to Eureka ASPM,
-    provide your API credentials via two environment variables: 'EUREKA_AGENT_TOKEN'
-    (your API token) and 'EUREKA_PROFILE' (your profile ID). When these are set, Radar CLI
-    automatically uploads results after each scan — letting you view your full scan 
-    history and all findings in the Eureka ASPM Dashboard. To prevent Radar CLI from
-    uploading scan findings even when you have 'EUREKA_AGENT_TOKEN' and 'EUREKA_PROFILE'
-    set, you can pass the LOCAL option on the command line.
+    provide your API credentials through the 'EUREKA_AGENT_TOKEN' environment variable.
+    When set, Radar CLI automatically uploads results after each scan — letting you view
+    your full scan history and all findings in the Eureka ASPM Dashboard. To prevent
+    Radar CLI from uploading scan findings even when you have 'EUREKA_AGENT_TOKEN' set,
+    you can pass the LOCAL option on the command line.
 
     Exit codes:
          0 - Clean and successful scan. No errors, warnings, or notes.
@@ -166,13 +166,13 @@ module.exports = {
     if (metadata.type === 'error') throw new Error(`${metadata.error.code}: ${metadata.error.details}`)
 
     // Send telemetry: scan started.
-    let scanID = undefined
+    let scanID = args.SCAN_ID ?? undefined
     const timestamp = DateTime.now().toISO()
 
     if (telemetry.enabled && !args.LOCAL) {
       // TODO: Should pass scanID to the server; not read it from the server.
       try {
-        const res = await telemetry.send(`scans/started`, {}, { scanners: scanners.map((s) => s.name), metadata, timestamp })
+        const res = await telemetry.send(`scans/started`, {}, { scanners: scanners.map((s) => s.name), scanID, metadata, timestamp })
         if (!res.ok) throw new Error(`[${res.status}] ${res.statusText}: ${await res.text()}`)
         const data = await res.json()
         scanID = data.scan_id

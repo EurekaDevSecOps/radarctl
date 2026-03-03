@@ -256,16 +256,15 @@ radar scan -s opengrep,gitleaks,grype -o report.sarif
 
 ### Upload Findings to Eureka ASPM
 
-See all findings in one place with deduplication, trend tracking, and risk prioritization. To upload results to **Eureka ASPM**, provide your API credentials via two environment variables: `EUREKA_AGENT_TOKEN` (your API token) and `EUREKA_PROFILE` (your profile ID). When these are set, Radar CLI automatically uploads results after each scan — letting you view your full scan history and all findings in the **Eureka ASPM Dashboard**.
+See all findings in one place with deduplication, trend tracking, and risk prioritization. To upload results to **Eureka ASPM**, provide your API credentials through the `EUREKA_AGENT_TOKEN` environment variable. When set, Radar CLI automatically uploads results after each scan — letting you view your full scan history and all findings in the **Eureka ASPM Dashboard**.
 
 ```bash
 export EUREKA_AGENT_TOKEN=<your token>
-export EUREKA_PROFILE=<your profile ID>
 
 radar scan -s opengrep,gitleaks,grype
 ```
 
-NOTE: To prevent Radar CLI from uploading scan findings even when you have `EUREKA_AGENT_TOKEN` and `EUREKA_PROFILE` set, you can pass the `-l/--local` option on the command line.
+NOTE: To prevent Radar CLI from uploading scan findings even when you have `EUREKA_AGENT_TOKEN` set, you can pass the `-l/--local` option on the command line.
 
 ---
 
@@ -289,7 +288,6 @@ Telemetry is **off by default**.
 Radar does **not** send any data externally unless you explicitly provide:
 
 * `EUREKA_AGENT_TOKEN`
-* `EUREKA_PROFILE`
 
 When provided:
 
@@ -307,7 +305,7 @@ When omitted:
 | Issue                                         | Cause                               | Solution                                                  |
 | --------------------------------------------- | ----------------------------------- | --------------------------------------------------------- |
 | ❌ `report.sarif` not found                   | Scan failed or invalid scanner list | Check scanner names and ensure Docker is running          |
-| ⚠️ No findings uploaded                       | Missing or invalid token/profile    | Set `EUREKA_AGENT_TOKEN` and `EUREKA_PROFILE`             |
+| ⚠️ No findings uploaded                       | Missing or invalid token    | Set `EUREKA_AGENT_TOKEN`             |
 | 🧱 `radar: command not found`                 | CLI not installed globally          | Run `npm i -g @eurekadevsecops/radar` again               |
 
 ---
