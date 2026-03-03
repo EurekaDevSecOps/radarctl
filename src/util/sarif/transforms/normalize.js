@@ -14,6 +14,7 @@ module.exports = (sarif, dir, git, root) => {
     run.properties = {
       repository: {
         type: 'git',
+        fullName: `${git.repo.owner}/${git.repo.name}`,
         url: git.repo.url.https
       }
     }
