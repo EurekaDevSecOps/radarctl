@@ -6,6 +6,18 @@ const SARIF = require('../util/sarif')
 const runner = require('../util/runner')
 const { DateTime } = require('luxon')
 
+function is_error(threshold) {
+  return is_warning(threshold) || threshold === 'high' || threshold === 'error'
+}
+
+function is_warning(threshold) {
+  return is_note(threshold) || threshold === 'moderate' || threshold === 'warning'
+}
+
+function is_note(threshold) {
+  return threshold === 'low' || threshold === 'note'
+}
+
 module.exports = {
   summary: 'scan for vulnerabilities',
   args: {
@@ -26,7 +38,8 @@ module.exports = {
     { name: 'LOCAL', short: 'l', long: 'local', type: 'boolean', description: 'local scan (no upload of findings to Eureka)' },
     { name: 'OUTPUT', short: 'o', long: 'output', type: 'string', description: 'output SARIF file' },
     { name: 'QUIET', short: 'q', long: 'quiet', type: 'boolean', description: 'suppress stdout logging' },
-    { name: 'SCANNERS', short: 's', long: 'scanners', type: 'string', description: 'list of scanners to use' }
+    { name: 'SCANNERS', short: 's', long: 'scanners', type: 'string', description: 'list of scanners to use' },
+    { name: 'THRESHOLD', short: 't', long: 'threshold', type: 'string', description: 'severity threshold for non-zero exit code' }
   ],
   description: `
     Scans a target for vulnerabilities. Defaults to displaying findings on stdout.
@@ -72,36 +85,33 @@ module.exports = {
     Radar CLI from uploading scan findings even when you have 'EUREKA_AGENT_TOKEN' set,
     you can pass the LOCAL option on the command line.
 
+    Use the THRESHOLD option to return a non-zero exit code for severities at or
+    above the threshold. For example, setting THRESHOLD to "high" would result in
+    a non-zero exit code only if high or critical vulnerabilities were found by the
+    scan. Available values are low, moderate, high, and critical - or note, warning,
+    and error if using the SARIF native severity levels.
+
     Exit codes:
-         0 - Clean and successful scan. No errors, warnings, or notes.
+         0 - Clean and successful scan. No vulnerabilities.
          1 - Bad command, arguments, or options. Scan not completed.
-      8-15 - Scan completed with errors, warnings, or notes.
-         9 - Scan completed with errors (no warnings or notes).
-        10 - Scan completed with warnings (no errors or notes).
-        11 - Scan completed with errors and warnings (no notes).
-        12 - Scan completed with notes (no errors or warnings).
-        13 - Scan completed with errors and notes (no warnings).
-        14 - Scan completed with warnings and notes (no errors).
-        15 - Scan completed with errors, warnings, and notes.
+         8 - Scan completed with vulnerabilities (>= THRESHOLD severity, if set).
      >= 16 - Scan aborted due to unexpected error.
   `,
   examples: [
     '$ radar scan ' + '(scan current working directory)'.grey,
     '$ radar scan . ' + '(scan current working directory)'.grey,
+    '$ radar scan /my/repo/dir ' + '(scan target directory)'.grey,
     '$ radar scan --local ' + '(run a local scan / no uploads to Eureka)'.grey,
     '$ radar scan -d' + '(turn debug mode on)'.grey,
     '$ radar scan --debug' + '(turn debug mode on)'.grey,
-    '$ radar scan /my/repo/dir ' + '(scan target directory)'.grey,
     '$ radar scan --output=scan.sarif ' + '(save findings in a file)'.grey,
     '$ radar scan -o scan.sarif /my/repo/dir ' + '(short versions of options)'.grey,
     '$ radar scan -s depscan,opengrep ' + '(use only given scanners)'.grey,
     '$ radar scan -c sca,sast ' + '(use all scanners from given categories)'.grey,
     '$ radar scan -c sca,sast -s all ' + '(use all scanners from given categories)'.grey,
     '$ radar scan -c sast -s opengrep ' + '(use only the opengrep scanner)'.grey,
-    '$ radar scan -f security ' + '(displays findings as high, moderate, and low)'.grey,
-    '$ radar scan -f sarif ' + '(displays findings as error, warning, and note)'.grey,
-    '$ radar scan -e moderate,low ' + '(treat lower severities as high)'.grey,
-    '$ radar scan -f sarif -e warning,note ' + '(treat lower severities as errors)'.grey
+    '$ radar scan -e moderate,low ' + '(treat moderate and low severities as high)'.grey,
+    '$ radar scan -t moderate ' + '(non-zero exit code for severities moderate and higher)'.grey,
   ],
   run: async (toolbox, args, globals) => {
     const { log, scanners: availableScanners, categories: availableCategories, telemetry, git } = toolbox
@@ -135,6 +145,10 @@ module.exports = {
       if (args.FORMAT === 'security' && severity !== 'moderate' && severity !== 'low') throw new Error(`Severity to escalate must be 'moderate' or 'low'`)
       if (args.FORMAT === 'sarif' && severity !== 'warning' && severity !== 'note') throw new Error(`Severity to escalate must be 'warning' or 'note'`)
     })
+    if (args.THRESHOLD) {
+      if (args.FORMAT === 'security' && !['critical', 'high', 'moderate', 'low'].includes(args.THRESHOLD)) throw new Error(`THRESHOLD must be one of 'critical', 'high', 'moderate' or 'low'`)
+      if (args.FORMAT === 'sarif' && !['error', 'warning', 'note'].includes(args.THRESHOLD)) throw new Error(`THRESHOLD must be one of 'error', 'warning' or 'note'`)
+    }
 
     // Derive scan parameters.
     const target = args.TARGET // target to scan
@@ -259,12 +273,16 @@ module.exports = {
     // Determine the correct exit code.
     let exitCode = 0
     if (!summary.errors.length && !summary.warnings.length && !summary.notes.length) {
+      // No vulnerabilities.
       exitCode = 0
+    } else if (args.THRESHOLD) {
+      // Set the exit code to 8 if there are any vulnerabilities with severities at or above the given threshold.
+      if (is_error(args.THRESHOLD) && summary.errors.length > 0) exitCode = 0x8
+      if (is_warning(args.THRESHOLD) && summary.warnings.length > 0) exitCode = 0x8
+      if (is_note(args.THRESHOLD) && summary.notes.length > 0) exitCode = 0x8
     } else {
+      // Set the exit code to 8 if there are any vulnerabilities.
       exitCode = 0x8
-      if (summary.errors.length > 0) exitCode |= 0x1
-      if (summary.warnings.length > 0) exitCode |= 0x2
-      if (summary.notes.length > 0) exitCode |= 0x4
     }
 
     // Display the exit code.

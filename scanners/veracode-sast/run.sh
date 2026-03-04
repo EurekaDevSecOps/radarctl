@@ -11,7 +11,10 @@
 # [Veracode Platform](https://docs.veracode.com/r/c_api_credentials3#generate-api-credentials).
 #
 # EXAMPLE:
-# $ VERACODE_API_KEY_ID=123456789 VERACODE_API_KEY_SECRET=a1b2c3d4e5f6 radar scan /path/to/repo
+# export VERACODE_API_KEY_ID=123456789
+# export VERACODE_API_KEY_SECRET=REDACTED
+# radar scan /path/to/repo
+# (Prefer setting these via your CI/secret manager; avoid typing real secrets into shell history.)
 #
 # Optional:
 #
@@ -23,7 +26,7 @@
 #
 # (B) Set the environment variable VERACODE_PACKAGE_CMD to the command that can create the Veracode package ZIP.
 #     We will run the command from the root of the repo. It should create veracode-package.zip and save it into
-#     the root folder of the repo. We will and submit this ZIP to Veracode Pipeline for a scan.
+#     the root folder of the repo. We will submit this ZIP to Veracode Pipeline SAST scanner for a scan.
 #
 #     Examples:
 #     export VERACODE_PACKAGE_CMD="zip -qr veracode-package.zip lib"
@@ -34,17 +37,34 @@
 #
 # (C) Your project does not need a build step. Omit both VERACODE_ZIPFILE and VERACODE_PACKAGE_CMD. We will
 #     automatically ZIP up the repo, excluding any files referenced in .gitignore, and submit to Veracode Pipeline
-#     for a scan. This is the default action if you don't set VERACODE_ZIPFILE and VERACODE_PACKAGE_CMD.
+#     SAST scanner for a scan. This is the default action if you don't set VERACODE_ZIPFILE and VERACODE_PACKAGE_CMD.
 #     This is appropriate for interpreted languages (Javascript, Python, etc) that don't need to be compiled.
 
 set -e
 
-# Expand relative paths
-APP_DIR=$(cd $1; pwd)
-CFG_DIR=$(cd $2; pwd)
-OUT_DIR=$(cd $3; pwd)
+if [ "$#" -ne 3 ]; then
+  echo "Usage: $0 <source_dir> <assets_dir> <output_dir>" >&2
+  exit 1
+fi
 
-# Veracode Pipeline only supports linux/amd64.
+# Expand relative paths
+if ! APP_DIR="$(cd -- "$1" && pwd)"; then
+  echo "Error: source directory not found: $1" >&2
+  exit 1
+fi
+
+if ! CFG_DIR="$(cd -- "$2" && pwd)"; then
+  echo "Error: assets directory not found: $2" >&2
+  exit 1
+fi
+
+if ! OUT_DIR="$(cd -- "$3" && pwd)"; then
+  echo "Error: output directory not found: $3" >&2
+  exit 1
+fi
+
+# The ghcr.io/eurekadevsecops/radar-veracode-sast image is currently published for linux/amd64 only.
+# On non-amd64 hosts (e.g., Apple Silicon), Docker will use emulation which may be slower.
 docker run --platform linux/amd64 --rm \
     -v "${APP_DIR}":/opt/eureka/radar/temp/repo \
     -v "${CFG_DIR}":/opt/eureka/radar/temp/input \
@@ -53,4 +73,4 @@ docker run --platform linux/amd64 --rm \
     -e VERACODE_API_KEY_SECRET="${VERACODE_API_KEY_SECRET}" \
     -e VERACODE_ZIPFILE="${VERACODE_ZIPFILE}" \
     -e VERACODE_PACKAGE_CMD="${VERACODE_PACKAGE_CMD}" \
-    ghcr.io/eurekadevsecops/radar-veracode-pipeline 2>&1
+    ghcr.io/eurekadevsecops/radar-veracode-sast 2>&1
