@@ -1,5 +1,17 @@
 # Changelog
 
+## [2.0.0](https://github.com/EurekaDevSecOps/radarctl/compare/v1.11.0...v2.0.0) (2026-03-04)
+
+
+### ⚠ BREAKING CHANGES
+
+* **scan:** Exit codes have changed. When vulnerabilities are found, instead of returning exit codes in the range 8-15, Radar CLI now only returns 8.
+
+### Improvements
+
+* **scan:** Add THRESHOLD option ([#67](https://github.com/EurekaDevSecOps/radarctl/issues/67)) ([47a0b7b](https://github.com/EurekaDevSecOps/radarctl/commit/47a0b7bdc2b9f59d13cc6d35d6b1367b00b4ebc3))
+* **scans:** Display link to scan in Eureka dashboard ([#68](https://github.com/EurekaDevSecOps/radarctl/issues/68)) ([0b33b79](https://github.com/EurekaDevSecOps/radarctl/commit/0b33b79420a6589b33b1dc4370e4733bf872eaae))
+
 ## [1.11.0](https://github.com/EurekaDevSecOps/radarctl/compare/v1.10.0...v1.11.0) (2026-02-27)
 
 
