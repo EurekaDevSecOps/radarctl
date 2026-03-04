@@ -145,6 +145,10 @@ module.exports = {
       if (args.FORMAT === 'security' && severity !== 'moderate' && severity !== 'low') throw new Error(`Severity to escalate must be 'moderate' or 'low'`)
       if (args.FORMAT === 'sarif' && severity !== 'warning' && severity !== 'note') throw new Error(`Severity to escalate must be 'warning' or 'note'`)
     })
+    if (args.THRESHOLD) {
+      if (args.FORMAT === 'security' && !['critical', 'high', 'moderate', 'low'].includes(args.THRESHOLD)) throw new Error(`THRESHOLD must be one of 'critical', 'high', 'moderate' or 'low'`)
+      if (args.FORMAT === 'sarif' && !['error', 'warning', 'note'].includes(args.THRESHOLD)) throw new Error(`THRESHOLD must be one of 'error', 'warning' or 'note'`)
+    }
 
     // Derive scan parameters.
     const target = args.TARGET // target to scan
