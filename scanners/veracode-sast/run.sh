@@ -11,8 +11,10 @@
 # [Veracode Platform](https://docs.veracode.com/r/c_api_credentials3#generate-api-credentials).
 #
 # EXAMPLE:
-# $ VERACODE_API_KEY_ID=123456789 VERACODE_API_KEY_SECRET=REDACTED radar scan /path/to/repo
-# (Avoid inlining real secrets; prefer setting these via your CI/secret manager.)
+# export VERACODE_API_KEY_ID=123456789
+# export VERACODE_API_KEY_SECRET=REDACTED
+# radar scan /path/to/repo
+# (Prefer setting these via your CI/secret manager; avoid typing real secrets into shell history.)
 #
 # Optional:
 #
@@ -46,6 +48,7 @@ CFG_DIR=$(cd $2; pwd)
 OUT_DIR=$(cd $3; pwd)
 
 # The ghcr.io/eurekadevsecops/radar-veracode-sast image is currently published for linux/amd64 only.
+# On non-amd64 hosts (e.g., Apple Silicon), Docker will use emulation which may be slower.
 docker run --platform linux/amd64 --rm \
     -v "${APP_DIR}":/opt/eureka/radar/temp/repo \
     -v "${CFG_DIR}":/opt/eureka/radar/temp/input \
