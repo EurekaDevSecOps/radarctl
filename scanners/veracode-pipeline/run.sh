@@ -11,7 +11,7 @@
 # [Veracode Platform](https://docs.veracode.com/r/c_api_credentials3#generate-api-credentials).
 #
 # EXAMPLE:
-# $ VERACODE_API_KEY_ID=123456789 VERACODE_API_KEY_SECRET=a1b2c3d4e5f6 radar scan /path/to/repo
+# $ VERACODE_API_KEY_ID=123456789 VERACODE_API_KEY_SECRET=somesecret radar scan /path/to/repo
 #
 # Optional:
 #
