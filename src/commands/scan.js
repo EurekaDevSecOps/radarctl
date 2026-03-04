@@ -167,6 +167,7 @@ module.exports = {
 
     // Send telemetry: scan started.
     let scanID = args.ID ?? undefined
+    let scanURL = undefined
     const timestamp = DateTime.now().toISO()
 
     if (telemetry.enabled && !args.LOCAL) {
@@ -175,6 +176,7 @@ module.exports = {
         if (!res.ok) throw new Error(`[${res.status}] ${res.statusText}: ${await res.text()}`)
         const data = await res.json()
         scanID = data.scan_id
+        scanURL = data.scan_url
       }
       catch (error) {
         log(`WARNING: Telemetry will be skipped for this scan run: ${error.message}\n`)
@@ -250,9 +252,8 @@ module.exports = {
     }
 
     // Display link to scan results in the dashboard.
-    if (telemetry.enabled && scanID && !args.QUIET) {
-      const scanUrl = `https://app.eurekadevsecops.com/scans?scans=${encodeURIComponent(scanID)}`
-      log(`View scan findings in the Eureka dashboard: ${scanUrl}`)
+    if (telemetry.enabled && scanURL && !args.QUIET) {
+      log(`View scan findings in the Eureka dashboard: ${scanURL}`)
     }
 
     // Determine the correct exit code.
