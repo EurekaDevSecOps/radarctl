@@ -26,7 +26,7 @@
 #
 # (B) Set the environment variable VERACODE_PACKAGE_CMD to the command that can create the Veracode package ZIP.
 #     We will run the command from the root of the repo. It should create veracode-package.zip and save it into
-#     the root folder of the repo. We will submit this ZIP to Veracode SAST scanner for a scan.
+#     the root folder of the repo. We will submit this ZIP to Veracode Pipeline SAST scanner for a scan.
 #
 #     Examples:
 #     export VERACODE_PACKAGE_CMD="zip -qr veracode-package.zip lib"
@@ -36,8 +36,8 @@
 # -or-
 #
 # (C) Your project does not need a build step. Omit both VERACODE_ZIPFILE and VERACODE_PACKAGE_CMD. We will
-#     automatically ZIP up the repo, excluding any files referenced in .gitignore, and submit to Veracode SAST
-#     scanner for a scan. This is the default action if you don't set VERACODE_ZIPFILE and VERACODE_PACKAGE_CMD.
+#     automatically ZIP up the repo, excluding any files referenced in .gitignore, and submit to Veracode Pipeline
+#     SAST scanner for a scan. This is the default action if you don't set VERACODE_ZIPFILE and VERACODE_PACKAGE_CMD.
 #     This is appropriate for interpreted languages (Javascript, Python, etc) that don't need to be compiled.
 
 set -e
