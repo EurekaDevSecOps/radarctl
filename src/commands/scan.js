@@ -251,7 +251,7 @@ module.exports = {
 
     // Display link to scan results in the dashboard.
     if (telemetry.enabled && scanID && !args.QUIET) {
-      const scanUrl = `https://app.eurekadevsecops.com/scans?scans=${scanID}`
+      const scanUrl = `https://app.eurekadevsecops.com/scans?scans=${encodeURIComponent(scanID)}`
       log(`View scan findings in the Eureka dashboard: ${scanUrl}`)
     }
 
