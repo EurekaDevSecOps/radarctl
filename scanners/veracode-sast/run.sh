@@ -23,7 +23,7 @@
 #
 # (B) Set the environment variable VERACODE_PACKAGE_CMD to the command that can create the Veracode package ZIP.
 #     We will run the command from the root of the repo. It should create veracode-package.zip and save it into
-#     the root folder of the repo. We will and submit this ZIP to Veracode Pipeline for a scan.
+#     the root folder of the repo. We will submit this ZIP to Veracode Pipeline SAST scanner for a scan.
 #
 #     Examples:
 #     export VERACODE_PACKAGE_CMD="zip -qr veracode-package.zip lib"
@@ -34,7 +34,7 @@
 #
 # (C) Your project does not need a build step. Omit both VERACODE_ZIPFILE and VERACODE_PACKAGE_CMD. We will
 #     automatically ZIP up the repo, excluding any files referenced in .gitignore, and submit to Veracode Pipeline
-#     for a scan. This is the default action if you don't set VERACODE_ZIPFILE and VERACODE_PACKAGE_CMD.
+#     SAST scanner for a scan. This is the default action if you don't set VERACODE_ZIPFILE and VERACODE_PACKAGE_CMD.
 #     This is appropriate for interpreted languages (Javascript, Python, etc) that don't need to be compiled.
 
 set -e
@@ -44,7 +44,7 @@ APP_DIR=$(cd $1; pwd)
 CFG_DIR=$(cd $2; pwd)
 OUT_DIR=$(cd $3; pwd)
 
-# Veracode Pipeline only supports linux/amd64.
+# Veracode SAST only supports linux/amd64.
 docker run --platform linux/amd64 --rm \
     -v "${APP_DIR}":/opt/eureka/radar/temp/repo \
     -v "${CFG_DIR}":/opt/eureka/radar/temp/input \
@@ -53,4 +53,4 @@ docker run --platform linux/amd64 --rm \
     -e VERACODE_API_KEY_SECRET="${VERACODE_API_KEY_SECRET}" \
     -e VERACODE_ZIPFILE="${VERACODE_ZIPFILE}" \
     -e VERACODE_PACKAGE_CMD="${VERACODE_PACKAGE_CMD}" \
-    ghcr.io/eurekadevsecops/radar-veracode-pipeline 2>&1
+    ghcr.io/eurekadevsecops/radar-veracode-sast 2>&1
