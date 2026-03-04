@@ -42,10 +42,26 @@
 
 set -e
 
+if [ "$#" -ne 3 ]; then
+  echo "Usage: $0 <source_dir> <assets_dir> <output_dir>" >&2
+  exit 1
+fi
+
 # Expand relative paths
-APP_DIR=$(cd $1; pwd)
-CFG_DIR=$(cd $2; pwd)
-OUT_DIR=$(cd $3; pwd)
+if ! APP_DIR="$(cd -- "$1" && pwd)"; then
+  echo "Error: source directory not found: $1" >&2
+  exit 1
+fi
+
+if ! CFG_DIR="$(cd -- "$2" && pwd)"; then
+  echo "Error: assets directory not found: $2" >&2
+  exit 1
+fi
+
+if ! OUT_DIR="$(cd -- "$3" && pwd)"; then
+  echo "Error: output directory not found: $3" >&2
+  exit 1
+fi
 
 # The ghcr.io/eurekadevsecops/radar-veracode-sast image is currently published for linux/amd64 only.
 # On non-amd64 hosts (e.g., Apple Silicon), Docker will use emulation which may be slower.
