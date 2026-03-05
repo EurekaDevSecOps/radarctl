@@ -1,9 +1,9 @@
 const crypto = require('node:crypto')
 const fs = require('node:fs')
 const path = require('node:path')
-const os = require('node:os')
 const SARIF = require('../util/sarif')
 const runner = require('../util/runner')
+const paths = require('../util/paths')
 const { DateTime } = require('luxon')
 
 function is_error(threshold) {
@@ -126,21 +126,7 @@ module.exports = {
     args.SCANNERS ??= ''
 
     // Normalize and/or rewrite args and options.
-    const bitbucketCloneDir = process.env.BITBUCKET_CLONE_DIR
-    if (bitbucketCloneDir) {
-      if (!args.TARGET) {
-        args.TARGET = bitbucketCloneDir
-      } else if (!path.isAbsolute(args.TARGET)) {
-        args.TARGET = path.join(bitbucketCloneDir, args.TARGET)
-      }
-    }
-    args.TARGET = path.resolve(path.normalize(args.TARGET))
-    if (bitbucketCloneDir) {
-      const relativeToClone = path.relative(bitbucketCloneDir, args.TARGET)
-      if (relativeToClone.startsWith('..') || path.isAbsolute(relativeToClone)) {
-        throw new Error(`TARGET must be within BITBUCKET_CLONE_DIR: ${bitbucketCloneDir}`)
-      }
-    }
+    args.TARGET = paths.resolveScanTarget(args.TARGET)
     if (args.CATEGORIES.split(',').includes('all')) args.CATEGORIES = availableCategories.join(',')
     if (args.SCANNERS.split(',').includes('all')) args.SCANNERS = availableScanners.map(s => s.name).join(',')
 
@@ -176,9 +162,7 @@ module.exports = {
       return severity
     })
     const assets = path.join(__dirname, '..', '..', 'scanners') // scanner assets
-    const scansdir = bitbucketCloneDir
-      ? path.join(bitbucketCloneDir, '.radar', 'scans')
-      : path.join(os.homedir(), '.radar', 'scans')
+    const scansdir = paths.resolveScansDir()
     const tmpdir = path.join(scansdir, crypto.randomUUID()) // temporary output directory
     fs.mkdirSync(tmpdir, { recursive: true })
     const outfile = args.OUTPUT ? path.resolve(args.OUTPUT) : undefined // output file, if any
