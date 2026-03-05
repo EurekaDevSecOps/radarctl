@@ -72,9 +72,9 @@ function parseAzureDevOpsUrl(originUrl) {
 
   const decodeComponentURI = (value) => {
     try {
-      return decodeURIComponent(value);
+      return decodeURIComponent(value)
     } catch (error) {
-      return value;
+      return value
     }
   }
 
