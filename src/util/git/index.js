@@ -22,7 +22,7 @@ function parseAzureDevOpsUrl(originUrl) {
     try {
       return decodeURIComponent(value)
     } catch (error) {
-      return value
+      throw new Error(`failed decoding Azure DevOps URL component: ${error.message}`)
     }
   }
 
