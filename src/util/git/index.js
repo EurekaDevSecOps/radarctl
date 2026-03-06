@@ -70,45 +70,20 @@ function parseAzureDevOpsUrl(originUrl) {
     }
   }
 
-  const parsePathParts = (rawPath) =>
-    rawPath
-      .split('/')
-      .filter((p) => p)
-      .map((part) => decodeComponentURI(part))
-
-  const sshMatch = parseSshUrl(originUrl, { user: 'git' })
-  if (sshMatch) {
-    const host = sshMatch.host
-    let pathParts = parsePathParts(sshMatch.path)
-    if (pathParts[0] === 'v3') pathParts = pathParts.slice(1)
-    if (pathParts.length < 3) {
-      throw new Error(`Invalid Azure DevOps URL format: ${originUrl}`)
-    }
-
-    const [org, project, repo] = pathParts
-    const https =
-      host.includes('visualstudio.com')
-        ? `https://${org}.visualstudio.com/${project}/_git/${repo}`
-        : `https://dev.azure.com/${org}/${project}/_git/${repo}`
-
-    return {
-      https: () => https,
-      type: 'azure',
-      domain: host,
-      // project name
-      user: project,
-      // repo name
-      project: repo
+  const decodeComponentURI = (value) => {
+    try {
+      return decodeURIComponent(value);
+    } catch (error) {
+      return value;
     }
   }
 
-  // Strip credentials from URL
-  const cleanUrl = originUrl.replace(/https:\/\/([^@:]+:)?[^@]+@/, 'https://')
-  const url = new URL(cleanUrl)
-
-  const pathParts = parsePathParts(url.pathname)
-  if (pathParts.length < 4 || pathParts[2] !== '_git') {
-    throw new Error(`Invalid Azure DevOps URL format: ${originUrl}`)
+  const pathParts = url.pathname
+    .split("/")
+    .filter((p) => p)
+    .map((part) => decodeComponentURI(part));
+  if (pathParts.length < 4 || pathParts[2] !== "_git") {
+    throw new Error(`Invalid Azure DevOps URL format: ${originUrl}`);
   }
 
   return {
