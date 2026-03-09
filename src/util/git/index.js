@@ -18,7 +18,18 @@ function parseAzureDevOpsUrl(originUrl) {
   const cleanUrl = originUrl.replace(/https:\/\/([^@:]+:)?[^@]+@/, "https://");
   const url = new URL(cleanUrl);
 
-  const pathParts = url.pathname.split("/").filter((p) => p);
+  const decodeComponentURI = (value) => {
+    try {
+      return decodeURIComponent(value)
+    } catch (error) {
+      throw new Error(`failed decoding Azure DevOps URL component: ${error.message}`)
+    }
+  }
+
+  const pathParts = url.pathname
+    .split("/")
+    .filter((p) => p)
+    .map((part) => decodeComponentURI(part));
   if (pathParts.length < 4 || pathParts[2] !== "_git") {
     throw new Error(`Invalid Azure DevOps URL format: ${originUrl}`);
   }
