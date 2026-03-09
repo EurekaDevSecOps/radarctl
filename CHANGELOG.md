@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.0.1](https://github.com/EurekaDevSecOps/radarctl/compare/v2.0.0...v2.0.1) (2026-03-09)
+
+
+### Code Refactoring
+
+* **PE-977:** Ensure the Azure Devops url is decoded during parsing ([#71](https://github.com/EurekaDevSecOps/radarctl/issues/71)) ([a825ce0](https://github.com/EurekaDevSecOps/radarctl/commit/a825ce0710a51ec171555247d8d0315b2897a73b))
+
 ## [2.0.0](https://github.com/EurekaDevSecOps/radarctl/compare/v1.11.0...v2.0.0) (2026-03-04)
 
 
