@@ -17,6 +17,7 @@ const resolveWithinCloneDir = ({ target, cloneDir, label }) => {
 
   return resolved
 }
+
 const assertCloneDir = ({ cloneDir, label, provider }) => {
   if (!cloneDir) {
     throw new Error(
@@ -42,11 +43,22 @@ const resolveScanTarget = (target) => {
         cloneDir,
         label: 'BITBUCKET_CLONE_DIR'
       })
+    case 'gitlab':
+      assertCloneDir({
+        cloneDir,
+        label: 'CI_PROJECT_DIR',
+        provider: 'GitLab'
+      })
+      return resolveWithinCloneDir({
+        target,
+        cloneDir,
+        label: 'CI_PROJECT_DIR'
+      })
     case 'default':
     default:
       break
   }
-};
+
   return path.resolve(path.normalize(target ?? process.cwd()))
 }
 
@@ -63,10 +75,19 @@ const resolveScansDir = () => {
     })
   }
 
+  if (provider === 'gitlab') {
+    assertCloneDir({
+      cloneDir,
+      label: 'CI_PROJECT_DIR',
+      provider: 'GitLab'
+    })
+  }
+
   if (cloneDir) return path.join(cloneDir, '.radar', 'scans')
 
   return path.join(os.homedir(), '.radar', 'scans')
 }
+
 module.exports = {
   getCiProvider,
   getCloneDir,
