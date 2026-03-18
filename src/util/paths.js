@@ -1,14 +1,14 @@
 const os = require('node:os')
 const path = require('node:path')
 
-const { getCiProvider, getCloneDir } = require('./ci')
+const { CICD_PROVIDERS, getCiProvider, getCloneDir } = require('./ci')
 
-// resolves the target scan path to ensure that it is in the cloned directory for the CI/CD provider. 
+// resolves the target scan path to ensure that it is in the cloned directory for the CI/CD provider
 const resolveWithinCloneDir = ({ target, cloneDir, label }) => {
   const baseDir = path.resolve(path.normalize(cloneDir))
-  // resolved is the target if provided, otherwise falls back ot the clone/base directory if target is not set. It is then normalized and resolved to an absolute path
+  // `resolved` starts as the requested target (or the clone dir) and is then
+  // anchored to `baseDir` before normalization/safety checks.
   let resolved = target ?? baseDir
-  // if the resolved path is not absolute, we join it with the baseDir
   if (!path.isAbsolute(resolved)) {
     resolved = path.join(baseDir, resolved)
   }
@@ -36,27 +36,27 @@ const resolveScanTarget = (target) => {
   const cloneDir = getCloneDir(provider)
 
   switch (provider) {
-    case 'bitbucket':
+    case CICD_PROVIDERS.BITBUCKET.value:
       assertCloneDir({
         cloneDir,
-        label: 'BITBUCKET_CLONE_DIR',
-        provider: 'Bitbucket'
+        label: CICD_PROVIDERS.BITBUCKET.env,
+        provider: CICD_PROVIDERS.BITBUCKET.label
       })
       return resolveWithinCloneDir({
         target,
         cloneDir,
-        label: 'BITBUCKET_CLONE_DIR'
+        label: CICD_PROVIDERS.BITBUCKET.env
       })
-    case 'gitlab':
+    case CICD_PROVIDERS.GITLAB.value:
       assertCloneDir({
         cloneDir,
-        label: 'CI_PROJECT_DIR',
-        provider: 'GitLab'
+        label: CICD_PROVIDERS.GITLAB.env,
+        provider: CICD_PROVIDERS.GITLAB.label
       })
       return resolveWithinCloneDir({
         target,
         cloneDir,
-        label: 'CI_PROJECT_DIR'
+        label: CICD_PROVIDERS.GITLAB.env
       })
     case 'default':
     default:
@@ -72,19 +72,19 @@ const resolveScansDir = () => {
   const provider = getCiProvider()
   const cloneDir = getCloneDir(provider)
 
-  if (provider === 'bitbucket') {
+  if (provider === CICD_PROVIDERS.BITBUCKET.value) {
     assertCloneDir({
       cloneDir,
-      label: 'BITBUCKET_CLONE_DIR',
-      provider: 'Bitbucket'
+      label: CICD_PROVIDERS.BITBUCKET.env,
+      provider: CICD_PROVIDERS.BITBUCKET.label
     })
   }
 
-  if (provider === 'gitlab') {
+  if (provider === CICD_PROVIDERS.GITLAB.value) {
     assertCloneDir({
       cloneDir,
-      label: 'CI_PROJECT_DIR',
-      provider: 'GitLab'
+      label: CICD_PROVIDERS.GITLAB.env,
+      provider: CICD_PROVIDERS.GITLAB.label
     })
   }
 
