@@ -1,4 +1,4 @@
-const { execSync } = require('node:child_process')
+const { execFileSync } = require('node:child_process')
 const fs = require('node:fs')
 const path = require('node:path')
 
@@ -33,19 +33,25 @@ function tokenizeParams(tail) {
  * Runs git blame on a single line of a file and returns the commit author.
  * Returns null if git blame fails or the file is not tracked.
  */
+const blameCache = new Map()
 function blameAuthor(root, relativePath, lineNumber) {
+  const key = `${relativePath}:${lineNumber}`
+  if (blameCache.has(key)) return blameCache.get(key)
   try {
-    const output = execSync(
-      `git blame -L ${lineNumber},${lineNumber} --porcelain -- "${relativePath}"`,
+    const output = execFileSync(
+      'git',
+      ['blame', '-L', `${lineNumber},${lineNumber}`, '--porcelain', '--', relativePath],
       { cwd: root }
     ).toString()
     const nameMatch = output.match(/^author (.+)$/m)
     const emailMatch = output.match(/^author-mail <(.+)>$/m)
     const name = nameMatch?.[1]?.trim()
     const email = emailMatch?.[1]?.trim()
-    if (!name || !email || email === 'not.committed.yet') return null
-    return { name, email }
+    const author = (!name || !email || email === 'not.committed.yet') ? null : { name, email }
+    blameCache.set(key, author)
+    return author
   } catch {
+    blameCache.set(key, null)
     return null
   }
 }
@@ -63,7 +69,7 @@ function scanFile(filePath, relativePath, root) {
     return directives
   }
 
-  const lines = content.split('\n')
+  const lines = content.split(/\r?\n/)
   for (let i = 0; i < lines.length; i++) {
     const match = lines[i].match(DIRECTIVE_REGEX)
     if (!match) continue
@@ -132,14 +138,24 @@ module.exports = (sarif, target, root) => {
 
   if (uris.size === 0) return
 
+  const rootAbs = path.resolve(effectiveRoot)
   const directives = []
   for (const uri of uris) {
-    const fullPath = path.join(effectiveRoot, uri)
-    directives.push(...scanFile(fullPath, uri, effectiveRoot))
+    if (uri.includes('://')) continue
+    let rel
+    try {
+      rel = decodeURIComponent(uri)
+    } catch {
+      continue
+    }
+    const abs = path.resolve(rootAbs, rel)
+    if (!abs.startsWith(rootAbs + path.sep)) continue
+
+    directives.push(...scanFile(abs, rel, rootAbs))
   }
 
   if (directives.length === 0) return
 
-  sarif.properties = sarif.properties ?? { tags: [] }
+  sarif.properties = sarif.properties ?? {}
   sarif.properties.EUREKA_IGNORE_DIRECTIVES = directives
 }
