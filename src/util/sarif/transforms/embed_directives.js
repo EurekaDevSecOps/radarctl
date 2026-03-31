@@ -1,3 +1,4 @@
+const { execSync } = require('node:child_process')
 const fs = require('node:fs')
 const path = require('node:path')
 
@@ -29,10 +30,31 @@ function tokenizeParams(tail) {
 }
 
 /**
+ * Runs git blame on a single line of a file and returns the commit author.
+ * Returns null if git blame fails or the file is not tracked.
+ */
+function blameAuthor(root, relativePath, lineNumber) {
+  try {
+    const output = execSync(
+      `git blame -L ${lineNumber},${lineNumber} --porcelain -- "${relativePath}"`,
+      { cwd: root }
+    ).toString()
+    const nameMatch = output.match(/^author (.+)$/m)
+    const emailMatch = output.match(/^author-mail <(.+)>$/m)
+    const name = nameMatch?.[1]?.trim()
+    const email = emailMatch?.[1]?.trim()
+    if (!name || !email || email === 'not.committed.yet') return null
+    return { name, email }
+  } catch {
+    return null
+  }
+}
+
+/**
  * Scans a single file for @eureka-radar directives and returns any found.
  * `relativePath` should already be the normalized URI from the SARIF result.
  */
-function scanFile(filePath, relativePath) {
+function scanFile(filePath, relativePath, root) {
   const directives = []
   let content
   try {
@@ -55,15 +77,21 @@ function scanFile(filePath, relativePath) {
     // 'reason' is required and must be a known value
     if (!params.reason || !VALID_IGNORE_REASONS.has(params.reason)) continue
 
+    const lineNumber = i + 1 // 1-indexed to match SARIF region.startLine
     const directive = {
       filePath: relativePath,
-      lineNumber: i + 1, // 1-indexed to match SARIF region.startLine
+      lineNumber,
       action,
       reason: params.reason,
       rawDirective: lines[i].trim(),
     }
 
     if (params.comment) directive.comment = params.comment
+
+    if (root) {
+      const author = blameAuthor(root, relativePath, lineNumber)
+      if (author) directive.author = author
+    }
 
     directives.push(directive)
   }
@@ -107,7 +135,7 @@ module.exports = (sarif, target, root) => {
   const directives = []
   for (const uri of uris) {
     const fullPath = path.join(effectiveRoot, uri)
-    directives.push(...scanFile(fullPath, uri))
+    directives.push(...scanFile(fullPath, uri, effectiveRoot))
   }
 
   if (directives.length === 0) return
