@@ -3,21 +3,25 @@ const hostedGitInfo = require('hosted-git-info')
 
 
 function isAzureDevOpsUrl(originUrl) {
-  const knownAzureDomains = ["dev.azure.com", "visualstudio.com"];
+  const knownAzureDomains = [
+    'dev.azure.com',
+    'visualstudio.com',
+    'ssh.dev.azure.com',
+    'vs-ssh.visualstudio.com'
+  ]
 
-  return knownAzureDomains.some((url) => originUrl.includes(url));
+  return knownAzureDomains.some((url) => originUrl.includes(url))
 }
 
 /**
  * Azure DevOps formats:
  * - `https://TOKEN@dev.azure.com/<org>/<project>/_git/<repo>`
  * - `https://pat:TOKEN@dev.azure.com/<org>/<project>/_git/<repo>` (the "pat" here can be any arbitrary string)
+ * - `git@ssh.dev.azure.com:v3/<org>/<project>/<repo>`
+ * - `ssh://git@ssh.dev.azure.com/v3/<org>/<project>/<repo>`
+ * - `git@vs-ssh.visualstudio.com:v3/<org>/<project>/<repo>`
  */
 function parseAzureDevOpsUrl(originUrl) {
-  // Strip credentials from URL
-  const cleanUrl = originUrl.replace(/https:\/\/([^@:]+:)?[^@]+@/, "https://");
-  const url = new URL(cleanUrl);
-
   const decodeComponentURI = (value) => {
     try {
       return decodeURIComponent(value)
@@ -26,23 +30,56 @@ function parseAzureDevOpsUrl(originUrl) {
     }
   }
 
-  const pathParts = url.pathname
-    .split("/")
-    .filter((p) => p)
-    .map((part) => decodeComponentURI(part));
-  if (pathParts.length < 4 || pathParts[2] !== "_git") {
-    throw new Error(`Invalid Azure DevOps URL format: ${originUrl}`);
+  const parsePathParts = (rawPath) =>
+    rawPath
+      .split('/')
+      .filter((p) => p)
+      .map((part) => decodeComponentURI(part))
+
+  const sshMatch = originUrl.match(/^(?:ssh:\/\/)?git@([^:/]+)(?::|\/)(.+)$/)
+  if (sshMatch) {
+    const host = sshMatch[1]
+    let pathParts = parsePathParts(sshMatch[2])
+    if (pathParts[0] === 'v3') pathParts = pathParts.slice(1)
+    if (pathParts.length < 3) {
+      throw new Error(`Invalid Azure DevOps URL format: ${originUrl}`)
+    }
+
+    const [org, project, repo] = pathParts
+    const https =
+      host.includes('visualstudio.com')
+        ? `https://${org}.visualstudio.com/${project}/_git/${repo}`
+        : `https://dev.azure.com/${org}/${project}/_git/${repo}`
+
+    return {
+      https: () => https,
+      type: 'azure',
+      domain: host,
+      // project name
+      user: project,
+      // repo name
+      project: repo
+    }
+  }
+
+  // Strip credentials from URL
+  const cleanUrl = originUrl.replace(/https:\/\/([^@:]+:)?[^@]+@/, 'https://')
+  const url = new URL(cleanUrl)
+
+  const pathParts = parsePathParts(url.pathname)
+  if (pathParts.length < 4 || pathParts[2] !== '_git') {
+    throw new Error(`Invalid Azure DevOps URL format: ${originUrl}`)
   }
 
   return {
     https: () => cleanUrl,
-    type: "azure",
+    type: 'azure',
     domain: url.hostname,
     // project name
     user: `${pathParts[0]}/${pathParts[1]}`, 
     // repo name
-    project: pathParts[3], 
-  };
+    project: pathParts[3]
+  }
 }
 
 function parseGitInfoFromUrl(originUrl) {
