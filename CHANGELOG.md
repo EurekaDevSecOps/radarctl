@@ -1,5 +1,17 @@
 # Changelog
 
+## [2.0.1](https://github.com/EurekaDevSecOps/radarctl/compare/v2.0.0...v2.0.1) (2026-04-07)
+
+
+### Fixes
+
+* **PE-1003:** Add handling for git ssh azure domains ([#76](https://github.com/EurekaDevSecOps/radarctl/issues/76)) ([a990711](https://github.com/EurekaDevSecOps/radarctl/commit/a99071107c0f871f4c05e8f4d91c5a0fe4182f58))
+
+
+### Code Refactoring
+
+* **PE-977:** Ensure the Azure Devops url is decoded during parsing ([#71](https://github.com/EurekaDevSecOps/radarctl/issues/71)) ([a825ce0](https://github.com/EurekaDevSecOps/radarctl/commit/a825ce0710a51ec171555247d8d0315b2897a73b))
+
 ## [2.0.0](https://github.com/EurekaDevSecOps/radarctl/compare/v1.11.0...v2.0.0) (2026-03-04)
 
 
