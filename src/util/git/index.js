@@ -133,6 +133,7 @@ function metadata(folder) {
 
     const fullName = `${info.user}/${info.project}`
     const providerRepoId = providerRepositoryId(info.type)
+    const permissionRepository = providerRepoId ? `${info.type}:${providerRepoId}:${fullName}` : undefined
 
     // Get the branch name.
     const branch = execSync('git rev-parse --abbrev-ref HEAD', { cwd: folder }).toString().trim()
@@ -203,6 +204,7 @@ git rev-list --abbrev=4 --abbrev-commit --all | \
         path: ownerPath.slice(1).join('/'),
         name: info.project,
         providerRepositoryId: providerRepoId,
+        permissionRepository,
         abbrevs,
         contributors
       },
