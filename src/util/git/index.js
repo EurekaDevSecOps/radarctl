@@ -1,4 +1,5 @@
 const { execSync } = require('node:child_process')
+const fs = require('node:fs')
 const hostedGitInfo = require('hosted-git-info')
 
 
@@ -90,6 +91,31 @@ function parseGitInfoFromUrl(originUrl) {
   return hostedGitInfo.fromUrl(originUrl, { noGitPlus: true });
 }
 
+function tryParseJSONFile(path) {
+  try {
+    if (!path) return undefined
+    if (!fs.existsSync(path)) return undefined
+    return JSON.parse(fs.readFileSync(path, 'utf8'))
+  } catch (error) {
+    return undefined
+  }
+}
+
+function providerRepositoryId(provider) {
+  if (provider === 'github') {
+    if (process.env.GITHUB_REPOSITORY_ID) return process.env.GITHUB_REPOSITORY_ID
+    const event = tryParseJSONFile(process.env.GITHUB_EVENT_PATH)
+    if (event?.repository?.id) return `${event.repository.id}`
+    return undefined
+  }
+
+  if (provider === 'gitlab') return process.env.CI_PROJECT_ID
+  if (provider === 'bitbucket') return process.env.BITBUCKET_REPO_UUID || process.env.BITBUCKET_REPOSITORY_UUID
+  if (provider === 'azure') return process.env.BUILD_REPOSITORY_ID
+
+  return undefined
+}
+
 function metadata(folder) {
   try {
     // Determine if we're scanning a valid git repo.
@@ -104,6 +130,9 @@ function metadata(folder) {
     const info = parseGitInfoFromUrl(originUrl)
     
     const ownerPath = info.user.split('/')
+
+    const fullName = `${info.user}/${info.project}`
+    const providerRepoId = providerRepositoryId(info.type)
 
     // Get the branch name.
     const branch = execSync('git rev-parse --abbrev-ref HEAD', { cwd: folder }).toString().trim()
@@ -169,9 +198,11 @@ git rev-list --abbrev=4 --abbrev-commit --all | \
           type: info.type,
           domain: info.domain
         },
+        fullName,
         owner: ownerPath[0],
         path: ownerPath.slice(1).join('/'),
         name: info.project,
+        providerRepositoryId: providerRepoId,
         abbrevs,
         contributors
       },

@@ -178,6 +178,7 @@ module.exports = {
     // Get target git metadata.
     const metadata = git.metadata(target)
     if (metadata.type === 'error') throw new Error(`${metadata.error.code}: ${metadata.error.details}`)
+    const repoFullName = metadata?.repo?.fullName
 
     // Send telemetry: scan started.
     let scanID = args.ID ?? undefined
@@ -193,6 +194,10 @@ module.exports = {
         scanURL = data.scan_url
       }
       catch (error) {
+        const statusMatch = error?.message?.match(/^\[(401|403)\]\s/)
+        if (statusMatch && repoFullName) {
+          log(`WARNING: EUREKA_AGENT_TOKEN is not authorized to upload scans for '${repoFullName}'. If this token is scoped to selected repositories, include this repository in the token scope.\n`)
+        }
         log(`WARNING: Telemetry will be skipped for this scan run: ${error.message}\n`)
         if (args.DEBUG) {
           log(error)

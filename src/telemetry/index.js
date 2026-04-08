@@ -10,7 +10,7 @@ class Telemetry {
 
   constructor() {
     this.enabled = !!this.#EUREKA_AGENT_TOKEN
-    this.#EWA_URL = this.#claims(this.#EUREKA_AGENT_TOKEN).aud?.replace(/\/$/, '')
+    this.#EWA_URL = this.#audBaseUrl(this.#claims(this.#EUREKA_AGENT_TOKEN))?.replace(/\/$/, '')
     this.#failedScanID = undefined
   }
 
@@ -58,6 +58,18 @@ class Telemetry {
     let claims = undefined
     try { claims = jwtDecode(jwt) } catch (error) {}
     return claims ?? {}
+  }
+
+  #audBaseUrl(claims) {
+    const aud = claims?.aud
+    if (typeof aud === 'string') return aud
+    if (Array.isArray(aud)) {
+      const urlAud = aud.find((value) => typeof value === 'string' && value.startsWith('http'))
+      if (urlAud) return urlAud
+      const anyAud = aud.find((value) => typeof value === 'string')
+      return anyAud
+    }
+    return undefined
   }
 
   async #token() {
@@ -128,7 +140,8 @@ class Telemetry {
 
   #toPostURL(path, params, token) {
     const claims = this.#claims(token ?? this.#EUREKA_AGENT_TOKEN)
-    const aud = claims.aud.replace(/\/$/, '')
+    const aud = this.#audBaseUrl(claims)?.replace(/\/$/, '')
+    if (!aud) throw new Error('Invalid EUREKA_AGENT_TOKEN: missing audience URL')
     if (path === `scans/started`) return `${aud}/scans/started`
     if (path === `scans/:scanID/started`) return `${aud}/scans/${params.scanID}/started`
     if (path === `scans/:scanID/completed`) return `${aud}/scans/${params.scanID}/completed`
@@ -139,7 +152,8 @@ class Telemetry {
 
   #toReceiveURL(path, params, token) {
     const claims = this.#claims(token ?? this.#EUREKA_AGENT_TOKEN)
-    const aud = claims.aud.replace(/\/$/, '')
+    const aud = this.#audBaseUrl(claims)?.replace(/\/$/, '')
+    if (!aud) throw new Error('Invalid EUREKA_AGENT_TOKEN: missing audience URL')
     if (path === `scans/:scanID/summary`) {
       const profileId = process.env.EUREKA_PROFILE
       const base = `${aud}/scans/${params.scanID}/summary`
