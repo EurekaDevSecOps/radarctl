@@ -1,22 +1,25 @@
 const os = require('node:os')
 const path = require('node:path')
 
-const { getCiProvider, getCloneDir } = require('./ci')
+const { CICD_PROVIDERS, getCiProvider, getCloneDir } = require('./ci')
 
 const resolveWithinCloneDir = ({ target, cloneDir, label }) => {
-  let resolved = target ?? cloneDir
+  const baseDir = path.resolve(path.normalize(cloneDir))
+  let resolved = target ?? baseDir
+
   if (!path.isAbsolute(resolved)) {
-    resolved = path.join(cloneDir, resolved)
+    resolved = path.join(baseDir, resolved)
   }
   resolved = path.resolve(path.normalize(resolved))
 
-  const relative = path.relative(cloneDir, resolved)
+  const relative = path.relative(baseDir, resolved)
   if (relative.startsWith('..') || path.isAbsolute(relative)) {
-    throw new Error(`TARGET must be within ${label}: ${cloneDir}`)
+    throw new Error(`TARGET must be within ${label}: ${baseDir}`)
   }
 
   return resolved
 }
+
 const assertCloneDir = ({ cloneDir, label, provider }) => {
   if (!cloneDir) {
     throw new Error(
@@ -31,22 +34,22 @@ const resolveScanTarget = (target) => {
   const cloneDir = getCloneDir(provider)
 
   switch (provider) {
-    case 'bitbucket':
+    case CICD_PROVIDERS.BITBUCKET.value:
       assertCloneDir({
         cloneDir,
-        label: 'BITBUCKET_CLONE_DIR',
-        provider: 'Bitbucket'
+        label: CICD_PROVIDERS.BITBUCKET.env,
+        provider: CICD_PROVIDERS.BITBUCKET.label
       })
       return resolveWithinCloneDir({
         target,
         cloneDir,
-        label: 'BITBUCKET_CLONE_DIR'
+        label: CICD_PROVIDERS.BITBUCKET.env
       })
     case 'default':
     default:
       break
   }
-};
+
   return path.resolve(path.normalize(target ?? process.cwd()))
 }
 
@@ -55,18 +58,22 @@ const resolveScansDir = () => {
   const provider = getCiProvider()
   const cloneDir = getCloneDir(provider)
 
-  if (provider === 'bitbucket') {
+  if (provider === CICD_PROVIDERS.BITBUCKET.value) {
     assertCloneDir({
       cloneDir,
-      label: 'BITBUCKET_CLONE_DIR',
-      provider: 'Bitbucket'
+      label: CICD_PROVIDERS.BITBUCKET.env,
+      provider: CICD_PROVIDERS.BITBUCKET.label
     })
   }
 
-  if (cloneDir) return path.join(cloneDir, '.radar', 'scans')
+  if (cloneDir) {
+    const baseDir = path.resolve(path.normalize(cloneDir))
+    return path.join(baseDir, '.radar', 'scans')
+  }
 
   return path.join(os.homedir(), '.radar', 'scans')
 }
+
 module.exports = {
   getCiProvider,
   getCloneDir,
