@@ -188,16 +188,18 @@ module.exports = {
     if (telemetry.enabled && !args.LOCAL) {
       try {
         const res = await telemetry.send(`scans/started`, {}, { scanners: scanners.map((s) => s.name), scanID, metadata, timestamp })
-        if (!res.ok) throw new Error(`[${res.status}] ${res.statusText}: ${await res.text()}`)
+        if (!res.ok) {
+          const text = await res.text()
+          if ((res.status === 401 || res.status === 403) && repoFullName) {
+            log(`WARNING: EUREKA_AGENT_TOKEN is not authorized to upload scans for '${repoFullName}'. If this token is scoped to selected repositories, include this repository in the token scope.\n`)
+          }
+          throw new Error(`[${res.status}] ${res.statusText}: ${text}`)
+        }
         const data = await res.json()
         scanID = data.scan_id
         scanURL = data.scan_url
       }
       catch (error) {
-        const statusMatch = error?.message?.match(/^\[(401|403)\]\s/)
-        if (statusMatch && repoFullName) {
-          log(`WARNING: EUREKA_AGENT_TOKEN is not authorized to upload scans for '${repoFullName}'. If this token is scoped to selected repositories, include this repository in the token scope.\n`)
-        }
         log(`WARNING: Telemetry will be skipped for this scan run: ${error.message}\n`)
         if (args.DEBUG) {
           log(error)

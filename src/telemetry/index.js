@@ -73,6 +73,7 @@ class Telemetry {
   }
 
   async #token() {
+    if (!this.#EWA_URL) throw new Error('Invalid EUREKA_AGENT_TOKEN: missing audience URL')
     const response = await fetch(`${this.#EWA_URL}/vdbe/token`, {
       method: 'POST',
       headers: {
