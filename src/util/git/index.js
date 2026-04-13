@@ -13,6 +13,46 @@ function isAzureDevOpsUrl(originUrl) {
   return knownAzureDomains.some((url) => originUrl.includes(url))
 }
 
+function isBitbucketUrl(originUrl) {
+  return originUrl.toLowerCase().includes("bitbucket.org");
+}
+
+
+/**
+ * BitBucket format:
+ * - `http://<user>@bitbucket.org/<user>/<project>`
+ * - The remote URL for BitBucket repositories is formatted in http and does not include the .git suffix. 
+ *   We should handle parsing the URL accordingly 
+ */
+function parseBitbucketUrl(originUrl) {
+  if (!originUrl) return null;
+  if (!/^https?:\/\//i.test(originUrl)) return null;
+
+  const cleanUrl = originUrl.replace(/^http:\/\//i, "https://");
+  let url;
+  try {
+    url = new URL(cleanUrl);
+  } catch (error) {
+    return null;
+  }
+
+  const pathParts = url.pathname.split("/").filter((p) => p);
+  if (pathParts.length < 2) return null;
+
+  const user = pathParts[0];
+  const project = pathParts[1].replace(/\.git$/i, "");
+  if (!user || !project) return null;
+
+  const httpsUrl = `https://${url.hostname}/${user}/${project}`;
+  return {
+    https: () => httpsUrl,
+    type: "bitbucket",
+    domain: url.hostname,
+    user,
+    project,
+  };
+}
+
 /**
  * Azure DevOps formats:
  * - `https://TOKEN@dev.azure.com/<org>/<project>/_git/<repo>`
@@ -87,6 +127,11 @@ function parseGitInfoFromUrl(originUrl) {
     return parseAzureDevOpsUrl(originUrl);
   }
 
+  if (isBitbucketUrl(originUrl)) {
+    const bitbucketInfo = parseBitbucketUrl(originUrl);
+    if (bitbucketInfo) return bitbucketInfo;
+  }
+
   return hostedGitInfo.fromUrl(originUrl, { noGitPlus: true });
 }
 
@@ -100,7 +145,6 @@ function metadata(folder) {
 
     // Get the repo name and owner.
     const originUrl = execSync('git config --get remote.origin.url', { cwd: folder }).toString().trim()
-
     const info = parseGitInfoFromUrl(originUrl)
     
     const ownerPath = info.user.split('/')
