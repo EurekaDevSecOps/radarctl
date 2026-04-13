@@ -8,11 +8,21 @@ const CICD_PROVIDERS = {
     label: 'Bitbucket',
     env: 'BITBUCKET_CLONE_DIR',
     value: 'bitbucket'
+  },
+  GITLAB: {
+    label: 'GitLab',
+    env: 'CI_PROJECT_DIR',
+    value: 'gitlab'
   }
 }
 
 const getBitbucketCloneDir = () =>
   getEnvValue(process.env[CICD_PROVIDERS.BITBUCKET.env])
+
+const getGitlabCloneDir = () =>
+  getEnvValue(process.env[CICD_PROVIDERS.GITLAB.env])
+
+const isGitlabCi = () => !!process.env.GITLAB_CI
 
 const isBitbucketCi = () =>
   !!(
@@ -26,6 +36,10 @@ const getCiProvider = () => {
   if (getBitbucketCloneDir() || isBitbucketCi()) {
     return CICD_PROVIDERS.BITBUCKET.value
   }
+  // GitLab CI provides CI_PROJECT_DIR for the repository checkout path
+  if (getGitlabCloneDir() || isGitlabCi()) {
+    return CICD_PROVIDERS.GITLAB.value
+  }
   return 'default'
 }
 
@@ -34,6 +48,8 @@ const getCloneDir = (provider = getCiProvider()) => {
   switch (provider) {
     case CICD_PROVIDERS.BITBUCKET.value:
       return getBitbucketCloneDir()
+    case CICD_PROVIDERS.GITLAB.value:
+      return getGitlabCloneDir()
     case 'default':
     default:
       return null
@@ -43,7 +59,9 @@ const getCloneDir = (provider = getCiProvider()) => {
 module.exports = {
   CICD_PROVIDERS,
   getBitbucketCloneDir,
+  getGitlabCloneDir,
   isBitbucketCi,
+  isGitlabCi,
   getCiProvider,
   getCloneDir
 }
