@@ -14,6 +14,7 @@ function isAzureDevOpsUrl(originUrl) {
 }
 
 function isBitbucketUrl(originUrl) {
+  if (!originUrl) return false
   return originUrl.toLowerCase().includes("bitbucket.org");
 }
 
