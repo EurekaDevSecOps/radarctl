@@ -14,43 +14,81 @@ function isAzureDevOpsUrl(originUrl) {
 }
 
 function isBitbucketUrl(originUrl) {
+  if (!originUrl) return false
   return originUrl.toLowerCase().includes("bitbucket.org");
+}
+
+function parseSshUrl(originUrl, { user } = {}) {
+  const match = originUrl.match(/^(?:ssh:\/\/)?([^@]+)@([^:/]+)(?::|\/)(.+)$/)
+  if (!match) return null
+  if (user && match[1] !== user) return null
+  return {
+    user: match[1],
+    host: match[2],
+    path: match[3]
+  }
 }
 
 
 /**
- * BitBucket format:
- * - `http://<user>@bitbucket.org/<user>/<project>`
- * - The remote URL for BitBucket repositories is formatted in http and does not include the .git suffix. 
- *   We should handle parsing the URL accordingly 
+ * BitBucket formats:
+ * - `http://<user>@bitbucket.org/<workspace>/<repo>`
+ * - `https://bitbucket.org/<workspace>/<repo>`
+ * - `git@bitbucket.org:<workspace>/<repo>.git`
+ * - `ssh://git@bitbucket.org/<workspace>/<repo>.git`
+ * - The remote URL for BitBucket repositories may omit or include the .git suffix.
  */
 function parseBitbucketUrl(originUrl) {
-  if (!originUrl) return null;
-  if (!/^https?:\/\//i.test(originUrl)) return null;
+  if (!originUrl) return null
 
-  const cleanUrl = originUrl.replace(/^http:\/\//i, "https://");
-  let url;
-  try {
-    url = new URL(cleanUrl);
-  } catch (error) {
-    return null;
+  const parsePathParts = (rawPath) =>
+    rawPath.split('/').filter((p) => p)
+
+  const sshMatch = parseSshUrl(originUrl, { user: 'git' })
+  if (sshMatch) {
+    const host = sshMatch.host
+    const pathParts = parsePathParts(sshMatch.path)
+    if (pathParts.length < 2) return null
+
+    const user = pathParts[0]
+    const project = pathParts[1].replace(/\.git$/i, '')
+    if (!user || !project) return null
+
+    const httpsUrl = `https://${host}/${user}/${project}`
+    return {
+      https: () => httpsUrl,
+      type: 'bitbucket',
+      domain: host,
+      user,
+      project
+    }
   }
 
-  const pathParts = url.pathname.split("/").filter((p) => p);
-  if (pathParts.length < 2) return null;
+  if (!/^https?:\/\//i.test(originUrl)) return null
 
-  const user = pathParts[0];
-  const project = pathParts[1].replace(/\.git$/i, "");
-  if (!user || !project) return null;
+  const cleanUrl = originUrl.replace(/^http:\/\//i, 'https://')
+  let url
+  try {
+    url = new URL(cleanUrl)
+  } catch (error) {
+    return null
+  }
 
-  const httpsUrl = `https://${url.hostname}/${user}/${project}`;
+  const pathParts = parsePathParts(url.pathname)
+  if (pathParts.length < 2) return null
+
+  const user = pathParts[0]
+  const project = pathParts[1].replace(/\.git$/i, '')
+  if (!user || !project) return null
+
+  const httpsUrl = `https://${url.hostname}/${user}/${project}`
   return {
     https: () => httpsUrl,
-    type: "bitbucket",
+    type: 'bitbucket',
     domain: url.hostname,
     user,
-    project,
-  };
+    project
+  }
 }
 
 /**
@@ -76,10 +114,10 @@ function parseAzureDevOpsUrl(originUrl) {
       .filter((p) => p)
       .map((part) => decodeComponentURI(part))
 
-  const sshMatch = originUrl.match(/^(?:ssh:\/\/)?git@([^:/]+)(?::|\/)(.+)$/)
+  const sshMatch = parseSshUrl(originUrl, { user: 'git' })
   if (sshMatch) {
-    const host = sshMatch[1]
-    let pathParts = parsePathParts(sshMatch[2])
+    const host = sshMatch.host
+    let pathParts = parsePathParts(sshMatch.path)
     if (pathParts[0] === 'v3') pathParts = pathParts.slice(1)
     if (pathParts.length < 3) {
       throw new Error(`Invalid Azure DevOps URL format: ${originUrl}`)
