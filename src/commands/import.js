@@ -62,9 +62,9 @@ module.exports = {
       if (args.FORMAT === 'security' && severity !== 'moderate' && severity !== 'low') throw new Error(`Severity to escalate must be 'moderate' or 'low'`)
       if (args.FORMAT === 'sarif' && severity !== 'warning' && severity !== 'note') throw new Error(`Severity to escalate must be 'warning' or 'note'`)
     })
-    if (args.REPOSITORY && !parseRepositoryValue(args.REPOSITORY)) {
-      throw new Error(`REPOSITORY must be in the format 'owner[/path]/name'`)
-    }
+
+    const cliRepository = args.REPOSITORY ? parseRepositoryValue(args.REPOSITORY) : null
+    if (args.REPOSITORY && !cliRepository) throw new Error(`REPOSITORY must be in the format 'owner[/path]/name'`)
 
     // Derive scan parameters.
     const escalations = args.ESCALATE?.split(',').map(severity => {
@@ -93,14 +93,7 @@ module.exports = {
 
     // use the repository from the CLI if present, otherwise fall back to SARIF
     const sarifRepository = parseRepositoryFromSarif(results.sarif)
-    const resolvedRepository = args.REPOSITORY
-      ? parseRepositoryValue(args.REPOSITORY)
-      : sarifRepository
-
-    // reject vulnerability import if CLI repository is malformed
-    if (args.REPOSITORY && !resolvedRepository) {
-      throw new Error(`REPOSITORY must be in the format 'owner[/path]/name'`)
-    }
+    const resolvedRepository = cliRepository ?? sarifRepository
 
     const importRepoOwner = resolvedRepository?.owner ?? ''
     const importRepoPath = resolvedRepository?.path ?? ''
