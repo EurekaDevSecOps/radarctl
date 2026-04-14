@@ -16,7 +16,7 @@ const parseRepositorySegments = (segments) => {
 
 const parseRepositoryValue = (value) => {
   if (!value) return null
-  const segments = value.split('/')
+  const segments = value.split('/').map((segment) => segment.trim())
 
   return parseRepositorySegments(segments)
 }
