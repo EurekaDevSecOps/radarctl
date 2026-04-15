@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.0.2](https://github.com/EurekaDevSecOps/radarctl/compare/v2.0.1...v2.0.2) (2026-04-13)
+
+
+### Fixes
+
+* (PE-786) - Ensure the Radar can run in a BitBucket CI/CD pipeline ([#73](https://github.com/EurekaDevSecOps/radarctl/issues/73)) ([be0ad7a](https://github.com/EurekaDevSecOps/radarctl/commit/be0ad7a42cc3aaa4a4f97cde0aaf6607b2d8a2fc))
+
 ## [2.0.1](https://github.com/EurekaDevSecOps/radarctl/compare/v2.0.0...v2.0.1) (2026-04-07)
 
 
