@@ -204,99 +204,112 @@ module.exports = {
       }
     }
 
-    // Send telemetry: scan started (stage 2).
-    if (telemetry.enabled && scanID && !args.LOCAL) {
-      const res = await telemetry.sendSensitive(`scans/:scanID/started`, { scanID }, { metadata, timestamp })
-      if (!res.ok) log(`WARNING: Scan started (stage 2) telemetry upload failed: [${res.status}] ${res.statusText}: ${await res.text()}`)
-    }
-
-    // Run scanners.
-    log(`Running ${scanners.length} of ${availableScanners.length} scanners:`)
-    let results = { /* log, sarif */ }
     try {
-      // This will run all scanners and return the combined stdout log and SARIF object.
-      results = await runner.run({ scanners, target, assets, outdir: tmpdir, quiet: args.QUIET, log })
-    }
-    catch (error) {
-      log(`\n${error}`)
-      if (!args.QUIET) log('Scan NOT completed!')
+      // Send telemetry: scan started (stage 2).
       if (telemetry.enabled && scanID && !args.LOCAL) {
-        const res = await telemetry.send(`scans/:scanID/failed`, { scanID })
-        if (!res.ok) log(`WARNING: Scan status (not completed) telemetry upload failed: [${res.status}] ${res.statusText}: ${await res.text()}`)
+        const res = await telemetry.sendSensitive(`scans/:scanID/started`, { scanID }, { metadata, timestamp })
+        if (!res.ok) log(`WARNING: Scan started (stage 2) telemetry upload failed: [${res.status}] ${res.statusText}: ${await res.text()}`)
       }
-      fs.rmSync(tmpdir, { recursive: true, force: true }) // Clean up.
-      return 0x10 // exit code
+
+      throw new Error('Temporary test failure after scan started stage 2')
+
+      // Run scanners.
+      log(`Running ${scanners.length} of ${availableScanners.length} scanners:`)
+      let results = { /* log, sarif */ }
+      try {
+        // This will run all scanners and return the combined stdout log and SARIF object.
+        results = await runner.run({ scanners, target, assets, outdir: tmpdir, quiet: args.QUIET, log })
+      }
+      catch (error) {
+        log(`\n${error}`)
+        if (!args.QUIET) log('Scan NOT completed!')
+        if (telemetry.enabled && scanID && !args.LOCAL) {
+          const res = await telemetry.send(`scans/:scanID/failed`, { scanID })
+          if (!res.ok) log(`WARNING: Scan status (not completed) telemetry upload failed: [${res.status}] ${res.statusText}: ${await res.text()}`)
+        }
+        fs.rmSync(tmpdir, { recursive: true, force: true }) // Clean up.
+        return 0x10 // exit code
+      }
+
+      // Transform scan findings: treat warnings and notes as errors, and normalize location paths.
+      if (escalations) results.sarif = SARIF.transforms.escalate(results.sarif, escalations)
+      SARIF.transforms.normalize(results.sarif, target, metadata, git.root(target))
+
+      // Scan target for @eureka-radar ignore directives and embed them in the SARIF.
+      // Must run after normalize so file paths match the normalized URIs in results.
+      SARIF.transforms.embedDirectives(results.sarif, target, git.root(target))
+
+      // Write findings to the destination SARIF file.
+      if (outfile) fs.writeFileSync(outfile, JSON.stringify(results.sarif, null, 2))
+
+      // Send telemetry: scan results.
+      if (telemetry.enabled && scanID && !args.LOCAL) {
+        const res = await telemetry.sendSensitive(`scans/:scanID/results`, { scanID }, { findings: results.sarif, log: results.log })
+        if (!res.ok) log(`WARNING: Scan results telemetry upload failed: [${res.status}] ${res.statusText}: ${await res.text()}`)
+      }
+
+      // Analyze scan results: group findings by severity level.
+      let summary
+      if (telemetry.enabled && scanID && !args.LOCAL) {
+        const analysis = await telemetry.receiveSensitive(`scans/:scanID/summary`, { scanID })
+        if (!analysis?.findingsBySeverity) throw new Error(`Failed to retrieve analysis summary for scan '${scanID}'`)
+        summary = analysis.findingsBySeverity
+      } else {
+        summary = await SARIF.analysis.summarize(results.sarif, target)
+      }
+
+      // Send telemetry: scan summary.
+      if (telemetry.enabled && scanID && !args.LOCAL) {
+        const res = await telemetry.send(`scans/:scanID/completed`, { scanID }, { summary })
+        if (!res.ok) log(`WARNING: Scan status (completed) telemetry upload failed: [${res.status}] ${res.statusText}: ${await res.text()}`)
+      }
+
+      // Display summarized findings.
+      if (!args.QUIET) {
+        log()
+        SARIF.visualizations.display_findings(summary, args.FORMAT, log)
+        if (outfile) log(`Findings exported to ${outfile}`)
+        SARIF.visualizations.display_totals(summary, args.FORMAT, log, telemetry.enabled && scanID && !args.LOCAL)
+      }
+
+      // Display link to scan results in the dashboard.
+      if (telemetry.enabled && scanURL && !args.QUIET) {
+        log(`View scan findings in the Eureka dashboard: ${scanURL}`)
+      }
+
+      // Determine the correct exit code.
+      let exitCode = 0
+      if (!summary.errors.length && !summary.warnings.length && !summary.notes.length) {
+        // No vulnerabilities.
+        exitCode = 0
+      } else if (args.THRESHOLD) {
+        // Set the exit code to 8 if there are any vulnerabilities with severities at or above the given threshold.
+        if (is_error(args.THRESHOLD) && summary.errors.length > 0) exitCode = 0x8
+        if (is_warning(args.THRESHOLD) && summary.warnings.length > 0) exitCode = 0x8
+        if (is_note(args.THRESHOLD) && summary.notes.length > 0) exitCode = 0x8
+      } else {
+        // Set the exit code to 8 if there are any vulnerabilities.
+        exitCode = 0x8
+      }
+
+      // Display the exit code.
+      if (!args.QUIET && exitCode !== 0) {
+        log(`Terminating with exit code ${exitCode}. See 'radar help scan' for list of possible exit codes.`)
+      }
+
+      // Clean up.
+      fs.rmSync(tmpdir, { recursive: true, force: true })
+
+      return exitCode
+    } catch (error) {
+      if (telemetry.enabled && scanID && !args.LOCAL) {
+        try {
+          const res = await telemetry.send(`scans/:scanID/failed`, { scanID })
+          if (!res.ok) log(`WARNING: Scan status (not completed) telemetry upload failed: [${res.status}] ${res.statusText}: ${await res.text()}`)
+        } catch {}
+      }
+      fs.rmSync(tmpdir, { recursive: true, force: true })
+      throw error
     }
-
-    // Transform scan findings: treat warnings and notes as errors, and normalize location paths.
-    if (escalations) results.sarif = SARIF.transforms.escalate(results.sarif, escalations)
-    SARIF.transforms.normalize(results.sarif, target, metadata, git.root(target))
-
-    // Scan target for @eureka-radar ignore directives and embed them in the SARIF.
-    // Must run after normalize so file paths match the normalized URIs in results.
-    SARIF.transforms.embedDirectives(results.sarif, target, git.root(target))
-
-    // Write findings to the destination SARIF file.
-    if (outfile) fs.writeFileSync(outfile, JSON.stringify(results.sarif, null, 2))
-
-    // Send telemetry: scan results.
-    if (telemetry.enabled && scanID && !args.LOCAL) {
-      const res = await telemetry.sendSensitive(`scans/:scanID/results`, { scanID }, { findings: results.sarif, log: results.log })
-      if (!res.ok) log(`WARNING: Scan results telemetry upload failed: [${res.status}] ${res.statusText}: ${await res.text()}`)
-    }
-
-    // Analyze scan results: group findings by severity level.
-    let summary
-    if (telemetry.enabled && scanID && !args.LOCAL) {
-      const analysis = await telemetry.receiveSensitive(`scans/:scanID/summary`, { scanID })
-      if (!analysis?.findingsBySeverity) throw new Error(`Failed to retrieve analysis summary for scan '${scanID}'`)
-      summary = analysis.findingsBySeverity
-    } else {
-      summary = await SARIF.analysis.summarize(results.sarif, target)
-    }
-
-    // Send telemetry: scan summary.
-    if (telemetry.enabled && scanID && !args.LOCAL) {
-      const res = await telemetry.send(`scans/:scanID/completed`, { scanID }, { summary })
-      if (!res.ok) log(`WARNING: Scan status (completed) telemetry upload failed: [${res.status}] ${res.statusText}: ${await res.text()}`)
-    }
-
-    // Display summarized findings.
-    if (!args.QUIET) {
-      log()
-      SARIF.visualizations.display_findings(summary, args.FORMAT, log)
-      if (outfile) log(`Findings exported to ${outfile}`)
-      SARIF.visualizations.display_totals(summary, args.FORMAT, log, telemetry.enabled && scanID && !args.LOCAL)
-    }
-
-    // Display link to scan results in the dashboard.
-    if (telemetry.enabled && scanURL && !args.QUIET) {
-      log(`View scan findings in the Eureka dashboard: ${scanURL}`)
-    }
-
-    // Determine the correct exit code.
-    let exitCode = 0
-    if (!summary.errors.length && !summary.warnings.length && !summary.notes.length) {
-      // No vulnerabilities.
-      exitCode = 0
-    } else if (args.THRESHOLD) {
-      // Set the exit code to 8 if there are any vulnerabilities with severities at or above the given threshold.
-      if (is_error(args.THRESHOLD) && summary.errors.length > 0) exitCode = 0x8
-      if (is_warning(args.THRESHOLD) && summary.warnings.length > 0) exitCode = 0x8
-      if (is_note(args.THRESHOLD) && summary.notes.length > 0) exitCode = 0x8
-    } else {
-      // Set the exit code to 8 if there are any vulnerabilities.
-      exitCode = 0x8
-    }
-
-    // Display the exit code.
-    if (!args.QUIET && exitCode !== 0) {
-      log(`Terminating with exit code ${exitCode}. See 'radar help scan' for list of possible exit codes.`)
-    }
-
-    // Clean up.
-    fs.rmSync(tmpdir, { recursive: true, force: true })
-
-    return exitCode
   }
 }
