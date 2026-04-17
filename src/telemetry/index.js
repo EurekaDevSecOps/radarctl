@@ -27,7 +27,12 @@ class Telemetry {
   }
 
   async sendSensitive(path, params, body) {
-    return this.send(path, params, body, await this.#token())
+    try {
+      return this.send(path, params, body, await this.#token())
+    } catch (error) {
+      await this.#reportScanFailure(path, params)
+      throw error
+    }
   }
 
   async receive(path, params, token) {
@@ -47,7 +52,12 @@ class Telemetry {
   }
 
   async receiveSensitive(path, params) {
-    return this.receive(path, params, await this.#token())
+    try {
+      return this.receive(path, params, await this.#token())
+    } catch (error) {
+      await this.#reportScanFailure(path, params)
+      throw error
+    }
   }
 
   //
