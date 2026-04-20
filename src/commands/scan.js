@@ -228,6 +228,11 @@ module.exports = {
       return 0x10 // exit code
     }
 
+    if (args.DEBUG && results.log) {
+      log()
+      log(results.log)
+    }
+
     // Transform scan findings: treat warnings and notes as errors, and normalize location paths.
     if (escalations) results.sarif = SARIF.transforms.escalate(results.sarif, escalations)
     SARIF.transforms.normalize(results.sarif, target, metadata, git.root(target))
