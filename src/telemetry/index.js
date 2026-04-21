@@ -7,11 +7,13 @@ class Telemetry {
   #USER_AGENT = `RadarCLI/${pkg.version} (${pkg.name}@${pkg.version}; ${process?.platform}-${process?.arch}; ${process?.release?.name}-${process?.version})`
   #EWA_URL
   #failedScanID // ensure there that scan failure is reported only once
+  #tokenContextByScanID
 
   constructor() {
     this.enabled = !!this.#EUREKA_AGENT_TOKEN
     this.#EWA_URL = this.#claims(this.#EUREKA_AGENT_TOKEN).aud?.replace(/\/$/, '')
     this.#failedScanID = undefined
+    this.#tokenContextByScanID = new Map()
   }
 
   async send(path, params, body, token) {
@@ -27,7 +29,10 @@ class Telemetry {
   }
 
   async sendSensitive(path, params, body) {
-    return this.send(path, params, body, await this.#token())
+    this.#cacheTokenContext(path, params, body)
+    const res = await this.send(path, params, body, await this.#token(params?.scanID))
+    this.#clearTokenContext(path, params)
+    return res
   }
 
   async receive(path, params, token) {
@@ -47,7 +52,7 @@ class Telemetry {
   }
 
   async receiveSensitive(path, params) {
-    return this.receive(path, params, await this.#token())
+    return this.receive(path, params, await this.#token(params?.scanID))
   }
 
   //
@@ -60,20 +65,31 @@ class Telemetry {
     return claims ?? {}
   }
 
-  async #token() {
-    const response = await fetch(`${this.#EWA_URL}/vdbe/token`, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${this.#EUREKA_AGENT_TOKEN}`,
-        'Content-Type': 'application/json',
-        'User-Agent': this.#USER_AGENT,
-        'Accept': 'application/json'
-      },
-      body: JSON.stringify({ profileId: process.env.EUREKA_PROFILE })
-    })
-    if (!response.ok) throw new Error(`Internal Error: Failed to get VDBE auth token from EWA: ${response.statusText}: ${await response.text()}`)
-    const data = await response.json()
-    return data.token
+  async #token(scanID) {
+    const body = {
+      profileId: process.env.EUREKA_PROFILE,
+      ...this.#tokenContextByScanID.get(scanID)
+    }
+
+    try {
+      const response = await fetch(`${this.#EWA_URL}/vdbe/token`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${this.#EUREKA_AGENT_TOKEN}`,
+          'Content-Type': 'application/json',
+          'User-Agent': this.#USER_AGENT,
+          'Accept': 'application/json'
+        },
+        body: JSON.stringify(body)
+      })
+      if (!response.ok) {
+        throw new Error(`Telemetry token request failed at /vdbe/token [${response.status}] ${response.statusText}: ${await response.text()}`)
+      }
+      const data = await response.json()
+      return data.token
+    } catch (error) {
+      throw new Error(`Telemetry token acquisition failed${scanID ? ` for scan '${scanID}'` : ''}: ${error.message}`, { cause: error })
+    }
   }
 
   async #sendRaw(path, params, body, token) {
@@ -123,6 +139,39 @@ class Telemetry {
       // we could choose to pass the error and send it somewhere possibly
       await this.#sendRaw(`scans/:scanID/failed`, { scanID }, {})
     } catch (error) {
+    }
+  }
+
+  #cacheTokenContext(path, params, body) {
+    if (path !== `scans/:scanID/started`) return
+
+    const scanID = params?.scanID
+    const repository = this.#toRepositoryTokenPayload(body?.metadata)
+    if (!scanID || !repository) return
+
+    this.#tokenContextByScanID.set(scanID, { repository })
+  }
+
+  #clearTokenContext(path, params) {
+    if (![`scans/:scanID/completed`, `scans/:scanID/failed`].includes(path)) return
+
+    const scanID = params?.scanID
+    if (scanID) this.#tokenContextByScanID.delete(scanID)
+  }
+
+  #toRepositoryTokenPayload(metadata) {
+    if (metadata?.type !== 'git') return undefined
+
+    const owner = [metadata.repo?.owner, metadata.repo?.path].filter(Boolean).join('/')
+    const name = metadata.repo?.name
+    const provider = metadata.repo?.source?.type
+    if (!owner || !name || !provider) return undefined
+
+    return {
+      provider,
+      fullName: `${owner}/${name}`,
+      owner,
+      name
     }
   }
 
