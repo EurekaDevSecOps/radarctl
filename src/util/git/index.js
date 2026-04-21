@@ -116,7 +116,7 @@ function parseAzureDevOpsUrl(originUrl) {
     type: 'azure',
     domain: url.hostname,
     // project name
-    user: pathParts[1],
+    user: `${pathParts[0]}/${pathParts[1]}`, 
     // repo name
     project: pathParts[3]
   }
