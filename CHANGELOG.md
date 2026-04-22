@@ -1,5 +1,17 @@
 # Changelog
 
+## [2.1.0](https://github.com/EurekaDevSecOps/radarctl/compare/v2.0.2...v2.1.0) (2026-04-20)
+
+
+### Improvements
+
+* **PE-956:** Tag lines of code where a vulnerability should be ignored ([#77](https://github.com/EurekaDevSecOps/radarctl/issues/77)) ([a06bda1](https://github.com/EurekaDevSecOps/radarctl/commit/a06bda13441f9635bca0539b53fc198373c55aee))
+
+
+### Miscellaneous Chores
+
+* Echo scanner stdout log when debug flag is on ([#83](https://github.com/EurekaDevSecOps/radarctl/issues/83)) ([da9d014](https://github.com/EurekaDevSecOps/radarctl/commit/da9d0149bdff17fc47788800c73b03ef20345c47))
+
 ## [2.0.2](https://github.com/EurekaDevSecOps/radarctl/compare/v2.0.1...v2.0.2) (2026-04-13)
 
 

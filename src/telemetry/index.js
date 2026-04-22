@@ -181,7 +181,7 @@ class Telemetry {
     if (path === `scans/started`) return `${aud}/scans/started`
     if (path === `scans/:scanID/started`) return `${aud}/scans/${params.scanID}/started`
     if (path === `scans/:scanID/completed`) return `${aud}/scans/${params.scanID}/completed`
-    if (path === `scans/:scanID/failed`) return `${aud}/scans/${params.scanID}/completed`
+    if (path === `scans/:scanID/failed`) return `${aud}/scans/${params.scanID}/failed`
     if (path === `scans/:scanID/results`) return `${aud}/scans/${params.scanID}/results`
     throw new Error(`Internal Error: Unknown telemetry event: POST ${path}`)
   }
