@@ -18,14 +18,15 @@ function is_note(threshold) {
   return threshold === 'low' || threshold === 'note'
 }
 
-function repositoryFullName(metadata) {
-  if (metadata?.type !== 'git') return 'the current repository'
-
-  const owner = [metadata.repo?.owner, metadata.repo?.path].filter(Boolean).join('/')
-  const name = metadata.repo?.name
-  if (!owner || !name) return 'the current repository'
-
-  return `${owner}/${name}`
+function logTelemetrySkipped(log, error, debug) {
+  log(`WARNING: Telemetry will be skipped for this scan run: ${error.message}\n`)
+  if (debug) {
+    log(error)
+    if (error?.cause?.code === 'ECONNREFUSED') {
+      log(error.cause.errors)
+      log()
+    }
+  }
 }
 
 module.exports = {
@@ -220,9 +221,7 @@ module.exports = {
         const res = await telemetry.sendSensitive(`scans/:scanID/started`, { scanID }, { metadata, timestamp })
         if (!res.ok) log(`WARNING: Scan started (stage 2) telemetry upload failed: [${res.status}] ${res.statusText}: ${await res.text()}`)
       } catch (error) {
-        if (!error?.message?.includes('Telemetry token acquisition failed')) throw error
-        log(`WARNING: Sensitive telemetry was skipped because the configured EUREKA_AGENT_TOKEN is not authorized for repository '${repositoryFullName(metadata)}'.`)
-        if (args.DEBUG) log(error)
+        logTelemetrySkipped(log, error, args.DEBUG)
       }
     }
 
@@ -266,9 +265,7 @@ module.exports = {
         const res = await telemetry.sendSensitive(`scans/:scanID/results`, { scanID }, { findings: results.sarif, log: results.log })
         if (!res.ok) log(`WARNING: Scan results telemetry upload failed: [${res.status}] ${res.statusText}: ${await res.text()}`)
       } catch (error) {
-        if (!error?.message?.includes('Telemetry token acquisition failed')) throw error
-        log(`WARNING: Sensitive telemetry was skipped because the configured EUREKA_AGENT_TOKEN is not authorized for repository '${repositoryFullName(metadata)}'.`)
-        if (args.DEBUG) log(error)
+        logTelemetrySkipped(log, error, args.DEBUG)
       }
     }
 
@@ -280,9 +277,7 @@ module.exports = {
         if (!analysis?.findingsBySeverity) throw new Error(`Failed to retrieve analysis summary for scan '${scanID}'`)
         summary = analysis.findingsBySeverity
       } catch (error) {
-        if (!error?.message?.includes('Telemetry token acquisition failed')) throw error
-        log(`WARNING: Sensitive telemetry was skipped because the configured EUREKA_AGENT_TOKEN is not authorized for repository '${repositoryFullName(metadata)}'.`)
-        if (args.DEBUG) log(error)
+        logTelemetrySkipped(log, error, args.DEBUG)
         summary = await SARIF.analysis.summarize(results.sarif, target)
       }
     } else {

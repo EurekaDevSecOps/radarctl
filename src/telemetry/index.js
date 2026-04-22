@@ -21,18 +21,18 @@ class Telemetry {
     try {
       res = await this.#sendRaw(path, params, body, token)
     } catch (error) {
+      this.#clearTokenContext(path, params)
       await this.#reportScanFailure(path, params)
       throw error
     }
+    this.#clearTokenContext(path, params)
     if (!res.ok) await this.#reportScanFailure(path, params)
     return res
   }
 
   async sendSensitive(path, params, body) {
     this.#cacheTokenContext(path, params, body)
-    const res = await this.send(path, params, body, await this.#token(params?.scanID))
-    this.#clearTokenContext(path, params)
-    return res
+    return this.send(path, params, body, await this.#token(params?.scanID))
   }
 
   async receive(path, params, token) {
@@ -66,9 +66,10 @@ class Telemetry {
   }
 
   async #token(scanID) {
+    const tokenContext = this.#tokenContextByScanID.get(scanID)
     const body = {
       profileId: process.env.EUREKA_PROFILE,
-      ...this.#tokenContextByScanID.get(scanID)
+      ...tokenContext
     }
 
     try {
@@ -88,7 +89,12 @@ class Telemetry {
       const data = await response.json()
       return data.token
     } catch (error) {
-      throw new Error(`Telemetry token acquisition failed${scanID ? ` for scan '${scanID}'` : ''}: ${error.message}`, { cause: error })
+      const repository = tokenContext?.repository?.fullName
+      const message = repository
+        ? `Sensitive telemetry was skipped because the configured EUREKA_AGENT_TOKEN is not authorized for repository '${repository}'.`
+        : 'Sensitive telemetry was skipped because the configured EUREKA_AGENT_TOKEN could not be authorized for the current scanned repository.'
+      const wrapped = new Error(message, { cause: error })
+      throw wrapped
     }
   }
 
