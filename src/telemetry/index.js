@@ -69,7 +69,7 @@ class Telemetry {
         'User-Agent': this.#USER_AGENT,
         'Accept': 'application/json'
       },
-      body: JSON.stringify({ profileId: process.env.EUREKA_PROFILE })
+      body: JSON.stringify({})
     })
     if (!response.ok) throw new Error(`Internal Error: Failed to get VDBE auth token from EWA: ${response.statusText}: ${await response.text()}`)
     const data = await response.json()
@@ -140,11 +140,7 @@ class Telemetry {
   #toReceiveURL(path, params, token) {
     const claims = this.#claims(token ?? this.#EUREKA_AGENT_TOKEN)
     const aud = claims.aud.replace(/\/$/, '')
-    if (path === `scans/:scanID/summary`) {
-      const profileId = process.env.EUREKA_PROFILE
-      const base = `${aud}/scans/${params.scanID}/summary`
-      return profileId ? `${base}?profileId=${profileId}` : base
-    }
+    if (path === `scans/:scanID/summary`) return `${aud}/scans/${params.scanID}/summary`
     throw new Error(`Internal Error: Unknown telemetry event: GET ${path}`)
   }
 
@@ -154,11 +150,11 @@ class Telemetry {
   }
 
   #toBody(path, body) {
-    if (path === `scans/started`) body = { ...body, profileId: process.env.EUREKA_PROFILE }
-    if (path === `scans/:scanID/started`) body = { ...body, profileId: process.env.EUREKA_PROFILE }
-    if (path === `scans/:scanID/completed`) body = { ...this.#toFindings(body.summary), timestamp: DateTime.now().toISO(), status: 'success', log: { sizeBytes: 0, warnings: 0, errors: 0, link: 'none' }, profileId: process.env.EUREKA_PROFILE, params: { id: '' }}
+    if (path === `scans/started`) body = { ...body }
+    if (path === `scans/:scanID/started`) body = { ...body }
+    if (path === `scans/:scanID/completed`) body = { ...this.#toFindings(body.summary), timestamp: DateTime.now().toISO(), status: 'success', log: { sizeBytes: 0, warnings: 0, errors: 0, link: 'none' }, params: { id: '' }}
     if (path === `scans/:scanID/failed`) body = { ...body, timestamp: DateTime.now().toISO(), status: 'failure', findings: { total: 0, critical: 0, high: 0, med: 0, low: 0 }, log: { sizeBytes: 0, warnings: 0, errors: 0, link: 'none' }, params: { id: '' }}
-    if (path === `scans/:scanID/results`) body = { findings: body.findings /* SARIF */, log: Buffer.from(body.log, 'utf8').toString('base64'), profileId: process.env.EUREKA_PROFILE  }
+    if (path === `scans/:scanID/results`) body = { findings: body.findings /* SARIF */, log: Buffer.from(body.log, 'utf8').toString('base64') }
     return JSON.stringify(body)
   }
 
