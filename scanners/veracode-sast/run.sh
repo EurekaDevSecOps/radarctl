@@ -67,37 +67,46 @@ delete_packaged_zips() {
     # Check for old veracode zips and remove them
     if [ -e ./veracode-auto-pack-*.zip ]
     then
-        rm ./veracode-auto-pack-*.zip
+        rm "${APP_DIR}"/veracode-auto-pack-*.zip
     fi
 }
 
-install_dir=$(mktemp -d)
-needed_install=0
+new_zip=0
+if [[ -z "${VERACODE_ZIPFILE}" ]]; then
 
-# Check if Veracode-CLI is already installed
-if ! command -v veracode >/dev/null 2>&1
-then
-    echo "Installing Veracode CLI for auto-packaging"
-    needed_install=1
-    curl -fsS https://tools.veracode.com/veracode-cli/install -o "$install_dir"/veracode-installer.sh
-    (
-        cd "$install_dir" &&
-        sh "./veracode-installer.sh"
-    )
+  new_zip=1
+  install_dir=$(mktemp -d)
+  needed_install=0
 
-    # Check if installation succeeded
-    if [ ! -e "$install_dir"/veracode ]
-    then
-        echo "Failed to install Veracode CLI" >&2
-        exit 1
-    fi
+  # Check if Veracode-CLI is already installed
+  if ! command -v veracode >/dev/null 2>&1
+  then
+      echo "Installing Veracode CLI for auto-packaging"
+      needed_install=1
+      curl -fsS https://tools.veracode.com/veracode-cli/install -o "$install_dir"/veracode-installer.sh
+      (
+          cd "$install_dir" &&
+          sh "./veracode-installer.sh"
+      )
+
+      # Check if installation succeeded
+      if [ ! -e "$install_dir"/veracode ]
+      then
+          echo "Failed to install Veracode CLI" >&2
+          exit 1
+      fi
+  fi
+
+  delete_packaged_zips
+
+  # Packaging repo using Veracode-CLI's autopackager feature
+  "$install_dir"/veracode package --trust --type directory --source "${APP_DIR}" --output "${APP_DIR}"
+  export VERACODE_ZIPFILE="$(ls "${APP_DIR}"/veracode-auto-pack-*.zip | xargs basename | tr -d '\n')"
+
 fi
 
-delete_packaged_zips
-
-# Packaging repo using Veracode-CLI's autopackager feature
-"$install_dir"/veracode package --trust --type directory --source "${APP_DIR}"
-export VERACODE_ZIPFILE="$(ls ./veracode-auto-pack-*.zip)"
+echo "In run.sh"
+echo "VERACODE_ZIPFILE is ${VERACODE_ZIPFILE}"
 
 # The ghcr.io/eurekadevsecops/radar-veracode-sast image is currently published for linux/amd64 only.
 # On non-amd64 hosts (e.g., Apple Silicon), Docker will use emulation which may be slower.
@@ -111,10 +120,12 @@ docker run --platform linux/amd64 --rm \
     -e VERACODE_PACKAGE_CMD="${VERACODE_PACKAGE_CMD}" \
     ghcr.io/eurekadevsecops/radar-veracode-sast 2>&1
 
-# Clean up
-if [ "$needed_install" = "1" ]
-then
-    rm -rf "$install_dir"
-    rm -rf /tmp/veracode-cli.*
+if [ "$new_zip" = "1" ]; then
+  # Clean up
+  if [ "$needed_install" = "1" ]
+  then
+      rm -rf "$install_dir"
+      rm -rf /tmp/veracode-cli.*
+  fi
+  delete_packaged_zips
 fi
-delete_packaged_zips
