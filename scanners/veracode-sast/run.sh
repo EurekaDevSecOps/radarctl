@@ -96,7 +96,7 @@ fi
 delete_packaged_zips
 
 # Packaging repo using Veracode-CLI's autopackager feature
-"$install_dir"/veracode package --trust --type directory --source .
+"$install_dir"/veracode package --trust --type directory --source "${APP_DIR}"
 export VERACODE_ZIPFILE="$(ls ./veracode-auto-pack-*.zip)"
 
 # The ghcr.io/eurekadevsecops/radar-veracode-sast image is currently published for linux/amd64 only.
