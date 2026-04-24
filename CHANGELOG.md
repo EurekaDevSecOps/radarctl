@@ -1,5 +1,17 @@
 # Changelog
 
+## [2.2.0](https://github.com/EurekaDevSecOps/radarctl/compare/v2.1.0...v2.2.0) (2026-04-24)
+
+
+### Improvements
+
+* Add autopackager to veracode-sast ([#87](https://github.com/EurekaDevSecOps/radarctl/issues/87)) ([dec6fc3](https://github.com/EurekaDevSecOps/radarctl/commit/dec6fc3c7ff526748f686a7c77e64645f087b4de))
+
+
+### Fixes
+
+* Autopackager for Veracode SAST ([#90](https://github.com/EurekaDevSecOps/radarctl/issues/90)) ([5ed27fd](https://github.com/EurekaDevSecOps/radarctl/commit/5ed27fd09ab76ba46e00c67e96b43d8d59caa162))
+
 ## [2.1.0](https://github.com/EurekaDevSecOps/radarctl/compare/v2.0.2...v2.1.0) (2026-04-20)
 
 
