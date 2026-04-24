@@ -105,9 +105,6 @@ if [[ -z "${VERACODE_ZIPFILE}" ]]; then
 
 fi
 
-echo "In run.sh"
-echo "VERACODE_ZIPFILE is ${VERACODE_ZIPFILE}"
-
 # The ghcr.io/eurekadevsecops/radar-veracode-sast image is currently published for linux/amd64 only.
 # On non-amd64 hosts (e.g., Apple Silicon), Docker will use emulation which may be slower.
 docker run --platform linux/amd64 --rm \
