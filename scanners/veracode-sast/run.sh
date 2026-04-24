@@ -63,6 +63,42 @@ if ! OUT_DIR="$(cd -- "$3" && pwd)"; then
   exit 1
 fi
 
+delete_packaged_zips() {
+    # Check for old veracode zips and remove them
+    if [ -e ./veracode-auto-pack-*.zip ]
+    then
+        rm ./veracode-auto-pack-*.zip
+    fi
+}
+
+install_dir=$(mktemp -d)
+needed_install=0
+
+# Check if Veracode-CLI is already installed
+if ! command -v veracode >/dev/null 2>&1
+then
+    echo "Installing Veracode CLI for auto-packaging"
+    needed_install=1
+    curl -fsS https://tools.veracode.com/veracode-cli/install -o "$install_dir"/veracode-installer.sh
+    (
+        cd "$install_dir" &&
+        sh "./veracode-installer.sh"
+    )
+
+    # Check if installation succeeded
+    if [ ! -e "$install_dir"/veracode ]
+    then
+        echo "Failed to install Veracode CLI" >&2
+        exit 1
+    fi
+fi
+
+delete_packaged_zips
+
+# Packaging repo using Veracode-CLI's autopackager feature
+"$install_dir"/veracode package --trust --type directory --source .
+export VERACODE_ZIPFILE="$(ls ./veracode-auto-pack-*.zip)"
+
 # The ghcr.io/eurekadevsecops/radar-veracode-sast image is currently published for linux/amd64 only.
 # On non-amd64 hosts (e.g., Apple Silicon), Docker will use emulation which may be slower.
 docker run --platform linux/amd64 --rm \
@@ -74,3 +110,11 @@ docker run --platform linux/amd64 --rm \
     -e VERACODE_ZIPFILE="${VERACODE_ZIPFILE}" \
     -e VERACODE_PACKAGE_CMD="${VERACODE_PACKAGE_CMD}" \
     ghcr.io/eurekadevsecops/radar-veracode-sast 2>&1
+
+# Clean up
+if [ "$needed_install" = "1" ]
+then
+    rm -rf "$install_dir"
+    rm -rf /tmp/veracode-cli.*
+fi
+delete_packaged_zips
