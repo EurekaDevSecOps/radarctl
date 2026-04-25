@@ -148,6 +148,7 @@ If no target is specified, the current working directory is scanned.
 | `-f, --format`     | Output format for severity display: `security` (high/moderate/low) or `sarif` (error/warning/note). |
 | `-e, --escalate`   | Treat specified lower severities as high (e.g. `--escalate=moderate,low`).                          |
 | `-l, --local`      | Run a local scan (don't upload scan findings to Eureka).                                            |
+| `--skip-sbom`      | Skip SBOM generation.                                                                               |
 
 **PARAMETERS**
 
@@ -183,6 +184,10 @@ Or:
 # Treat warnings and notes as errors
 radar scan -f sarif -e warning,note
 ```
+
+#### SBOM Generation
+
+Radar CLI generates a CycloneDX SBOM after scanners complete and includes it in uploaded scan results when the scanned repository contains a supported dependency lockfile. SBOM generation runs CDXGen from a temporary workspace with dependency installation disabled, so scans remain predictable and do not run package manager installs. Repositories without supported lockfiles skip SBOM generation. Use `--skip-sbom` to skip this step.
 
 #### Exit Codes
 
