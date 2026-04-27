@@ -15,7 +15,7 @@ telemetry.send(`scans/started`, {}, { scanners, metadata, timestamp })
 telemetry.sendSensitive(`scans/:scanID/started`, { scanID }, { scanners, metadata, timestamp })
 telemetry.send(`scans/:scanID/completed`, { scanID }, { status, findings, log })
 telemetry.sendSensitive(`scans/:scanID/log`, { scanID }, log)
-telemetry.sendSensitive(`scans/:scanID/results`, { scanID }, { findings: sarif, log, sbom })
+telemetry.sendSensitive(`scans/:scanID/results`, { scanID }, { findings: sarif, log, sboms })
 ```
 
 To send a telemetry event indicating that a scan has started (stage 1):
@@ -40,7 +40,7 @@ telemetry.sendSensitive(`scans/:scanID/log`, { scanID }, log)
 
 To send a telemetry event with the scan vulnerability findings and generated SBOM:
 ```js
-telemetry.sendSensitive(`scans/:scanID/results`, { scanID }, { findings: sarif, log, sbom })
+telemetry.sendSensitive(`scans/:scanID/results`, { scanID }, { findings: sarif, log, sboms })
 ```
 
 ### Step 3: (optional) You can await on telemetry.send to read the fetch response.

@@ -77,6 +77,14 @@ const readTool = assets => {
   return TOML.parse(text)
 }
 
+const readJson = file => JSON.parse(fs.readFileSync(file, 'utf8'))
+
+const artifactFor = ({ format, specVersion, document }) => ({
+  format,
+  specVersion,
+  document
+})
+
 const commandFor = ({ tool, target, assets, outdir }) => {
   let cmd = tool.cmd
 
@@ -137,9 +145,10 @@ const runTool = async (cmd, { quiet, display }) => {
   }
 }
 
-const generate = async ({ target, outfile, quiet = false }) => {
-  const outdir = path.dirname(outfile)
-  const assets = path.join(__dirname, '..', '..', 'sbom', 'cdxgen')
+const toolAssets = name => path.join(__dirname, '..', '..', 'sbom', name)
+
+const runSbomTool = async ({ name, target, outdir, quiet }) => {
+  const assets = toolAssets(name)
   const tool = readTool(assets)
 
   await runTool(commandFor({ tool, target, assets, outdir }), {
@@ -151,8 +160,29 @@ const generate = async ({ target, outfile, quiet = false }) => {
       error: (label) => label
     }
   })
+}
 
-  return JSON.parse(fs.readFileSync(outfile, 'utf8'))
+const generate = async ({ target, outfile, quiet = false }) => {
+  const outdir = path.dirname(outfile)
+  const files = {
+    cyclonedx: outfile,
+    spdx: path.join(outdir, 'sbom.spdx.json')
+  }
+
+  await runSbomTool({ name: 'cdxgen', target, outdir, quiet })
+  await runSbomTool({ name: 'spdx', target, outdir, quiet })
+
+  const cyclonedx = readJson(files.cyclonedx)
+  const spdx = readJson(files.spdx)
+
+  return {
+    cyclonedx,
+    spdx,
+    artifacts: [
+      artifactFor({ format: 'cyclonedx', specVersion: cyclonedx.specVersion, document: cyclonedx }),
+      artifactFor({ format: 'spdx', specVersion: spdx.spdxVersion, document: spdx })
+    ]
+  }
 }
 
 module.exports = {

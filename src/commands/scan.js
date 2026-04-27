@@ -40,7 +40,7 @@ module.exports = {
     { name: 'OUTPUT', short: 'o', long: 'output', type: 'string', description: 'output SARIF file' },
     { name: 'QUIET', short: 'q', long: 'quiet', type: 'boolean', description: 'suppress stdout logging' },
     { name: 'SCANNERS', short: 's', long: 'scanners', type: 'string', description: 'list of scanners to use' },
-    { name: 'SKIP_SBOM', long: 'skip-sbom', type: 'boolean', description: 'skip CycloneDX SBOM generation' },
+    { name: 'SKIP_SBOM', short: 'B', long: 'skipSbom', type: 'bool', description: 'skip SBOM generation' },
     { name: 'THRESHOLD', short: 't', long: 'threshold', type: 'string', description: 'severity threshold for non-zero exit code' }
   ],
   description: `
@@ -248,9 +248,9 @@ module.exports = {
     // Write findings to the destination SARIF file.
     if (outfile) fs.writeFileSync(outfile, JSON.stringify(results.sarif, null, 2))
 
-    // Generate a CycloneDX SBOM artifact after scanners complete and before
-    // uploading the full scan results payload.
-    let sbom
+    // Generate SBOM artifacts after scanners complete and before uploading the
+    // full scan results payload.
+    let sboms
     if (!args.SKIP_SBOM) {
       const lockfile = SBOM.findLockfile(target)
       if (!lockfile) {
@@ -258,7 +258,8 @@ module.exports = {
       } else {
         try {
           if (!args.QUIET) log(`Generating SBOM from ${path.relative(target, lockfile)}:`)
-          sbom = await SBOM.generate({ target, outfile: sbomFile, quiet: args.QUIET })
+          const generatedSbom = await SBOM.generate({ target, outfile: sbomFile, quiet: args.QUIET })
+          sboms = generatedSbom.artifacts
         } catch (error) {
           if (error.interrupted) {
             if (!args.QUIET) log('\nSBOM generation interrupted.')
@@ -273,7 +274,7 @@ module.exports = {
 
     // Send telemetry: scan results.
     if (telemetry.enabled && scanID && !args.LOCAL) {
-      const res = await telemetry.sendSensitive(`scans/:scanID/results`, { scanID }, { findings: results.sarif, log: results.log, sbom })
+      const res = await telemetry.sendSensitive(`scans/:scanID/results`, { scanID }, { findings: results.sarif, log: results.log, sboms })
       if (!res.ok) log(`WARNING: Scan results telemetry upload failed: [${res.status}] ${res.statusText}: ${await res.text()}`)
     }
 
