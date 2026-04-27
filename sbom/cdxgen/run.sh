@@ -7,14 +7,16 @@
 
 set -e
 
+OUTPUT="$3"
+
 trap cleanup TERM INT
 
 cleanup()
 {
-  if [ -f "$3/cdxgen.cid" ]; then
-    PID=$(cat "$3/cdxgen.cid")
+  if [ -f "$OUTPUT/cdxgen.cid" ]; then
+    PID=$(cat "$OUTPUT/cdxgen.cid")
     docker stop "$PID"
-    rm "$3/cdxgen.cid"
+    rm "$OUTPUT/cdxgen.cid"
   fi
   exit 1
 }

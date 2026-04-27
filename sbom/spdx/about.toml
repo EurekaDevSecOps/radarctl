@@ -1,0 +1,4 @@
+name = "spdx"
+title = "SPDX"
+description = "Generate an SPDX SBOM from a CycloneDX SBOM."
+cmd = "${assets}/run.sh ${target} ${assets} ${output}"
