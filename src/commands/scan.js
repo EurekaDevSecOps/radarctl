@@ -18,6 +18,17 @@ function is_note(threshold) {
   return threshold === 'low' || threshold === 'note'
 }
 
+function logTelemetrySkipped(log, error, debug) {
+  log(`WARNING: Telemetry will be skipped for this scan run: ${error.message}\n`)
+  if (debug) {
+    log(error)
+    if (error?.cause?.code === 'ECONNREFUSED') {
+      log(error.cause.errors)
+      log()
+    }
+  }
+}
+
 module.exports = {
   summary: 'scan for vulnerabilities',
   args: {
@@ -206,8 +217,12 @@ module.exports = {
 
     // Send telemetry: scan started (stage 2).
     if (telemetry.enabled && scanID && !args.LOCAL) {
-      const res = await telemetry.sendSensitive(`scans/:scanID/started`, { scanID }, { metadata, timestamp })
-      if (!res.ok) log(`WARNING: Scan started (stage 2) telemetry upload failed: [${res.status}] ${res.statusText}: ${await res.text()}`)
+      try {
+        const res = await telemetry.sendSensitive(`scans/:scanID/started`, { scanID }, { metadata, timestamp })
+        if (!res.ok) log(`WARNING: Scan started (stage 2) telemetry upload failed: [${res.status}] ${res.statusText}: ${await res.text()}`)
+      } catch (error) {
+        logTelemetrySkipped(log, error, args.DEBUG)
+      }
     }
 
     // Run scanners.
@@ -246,16 +261,25 @@ module.exports = {
 
     // Send telemetry: scan results.
     if (telemetry.enabled && scanID && !args.LOCAL) {
-      const res = await telemetry.sendSensitive(`scans/:scanID/results`, { scanID }, { findings: results.sarif, log: results.log })
-      if (!res.ok) log(`WARNING: Scan results telemetry upload failed: [${res.status}] ${res.statusText}: ${await res.text()}`)
+      try {
+        const res = await telemetry.sendSensitive(`scans/:scanID/results`, { scanID }, { findings: results.sarif, log: results.log })
+        if (!res.ok) log(`WARNING: Scan results telemetry upload failed: [${res.status}] ${res.statusText}: ${await res.text()}`)
+      } catch (error) {
+        logTelemetrySkipped(log, error, args.DEBUG)
+      }
     }
 
     // Analyze scan results: group findings by severity level.
     let summary
     if (telemetry.enabled && scanID && !args.LOCAL) {
-      const analysis = await telemetry.receiveSensitive(`scans/:scanID/summary`, { scanID })
-      if (!analysis?.findingsBySeverity) throw new Error(`Failed to retrieve analysis summary for scan '${scanID}'`)
-      summary = analysis.findingsBySeverity
+      try {
+        const analysis = await telemetry.receiveSensitive(`scans/:scanID/summary`, { scanID })
+        if (!analysis?.findingsBySeverity) throw new Error(`Failed to retrieve analysis summary for scan '${scanID}'`)
+        summary = analysis.findingsBySeverity
+      } catch (error) {
+        logTelemetrySkipped(log, error, args.DEBUG)
+        summary = await SARIF.analysis.summarize(results.sarif, target)
+      }
     } else {
       summary = await SARIF.analysis.summarize(results.sarif, target)
     }
