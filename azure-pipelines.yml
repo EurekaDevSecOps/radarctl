@@ -1,0 +1,27 @@
+# Run Radar CLI scan via Azure Pipelines
+
+trigger:
+- main
+
+pool:
+  vmImage: ubuntu-latest
+
+steps:
+- task: NodeTool@0
+  inputs:
+    versionSpec: '22.x'
+  displayName: 'Install Node.js'
+
+- script: npm i -g @eurekadevsecops/radar
+  displayName: Install Radar CLI
+
+- script: radar && radar scanners
+  displayName: Verify Radar install
+
+- script: radar scan -s gitleaks,grype,opengrep,veracode-sca
+  displayName: Run Radar scan
+  env:
+    EUREKA_AGENT_TOKEN: $(EUREKA_AGENT_TOKEN)
+    SRCCLR_API_TOKEN: $(SRCCLR_API_TOKEN)
+    VERACODE_API_KEY_ID: $(VERACODE_API_KEY_ID)
+    VERACODE_API_KEY_SECRET: $(VERACODE_API_KEY_SECRET)
