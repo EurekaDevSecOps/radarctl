@@ -21,7 +21,6 @@
   },
   "scripts": {
     "commit": "npx cz",
-    "postinstall": "node scripts/postinstall.js",
     "prepare": "husky || true",
     "test": "standard"
   },
@@ -32,12 +31,10 @@
   "dependencies": {
     "@persistr/clif": "^1.11.2",
     "@persistr/clif-plugin-settings": "^2.3.1",
-    "dotenv": "^17.3.1",
     "hosted-git-info": "^9.0.0",
     "humanize-duration": "^3.33.0",
     "jwt-decode": "^4.0.0",
     "luxon": "^3.7.1",
-    "posthog-node": "^5.21.2",
     "smol-toml": "^1.4.1",
     "tiny-spinner": "^2.0.5"
   },
