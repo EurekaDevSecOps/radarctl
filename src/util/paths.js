@@ -1,7 +1,7 @@
-const os = require('node:os')
 const path = require('node:path')
 
 const { CICD_PROVIDERS, getCiProvider, getCloneDir } = require('./ci')
+const { getRadarDataDir } = require('./app_data')
 
 // resolves the target scan path to ensure that it is in the cloned directory for the CI/CD provider
 const resolveWithinCloneDir = ({ target, cloneDir, label }) => {
@@ -67,7 +67,7 @@ const resolveScanTarget = (target) => {
   return path.resolve(path.normalize(target ?? process.cwd()))
 }
 
-// resolve scans directory based on CI/CD provider or default to ~/.radar/scans
+// resolve scans directory based on CI/CD provider or default to the Radar app data directory
 const resolveScansDir = () => {
   const provider = getCiProvider()
   const cloneDir = getCloneDir(provider)
@@ -93,7 +93,7 @@ const resolveScansDir = () => {
     return path.join(baseDir, '.radar', 'scans')
   }
 
-  return path.join(os.homedir(), '.radar', 'scans')
+  return path.join(getRadarDataDir(), 'scans')
 }
 
 module.exports = {

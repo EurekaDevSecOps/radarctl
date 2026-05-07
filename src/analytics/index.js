@@ -1,32 +1,37 @@
-const { PosthogAnalytics } = require('./posthog')
+const { AnalyticsClient } = require('./client')
+const { ensureInstallationId } = require('./installation_id')
 
-const posthog = new PosthogAnalytics()
+const analyticsClient = new AnalyticsClient()
 
-const ANALYTICS_EVENTS = {
-  scan_command_started: 'scan_command_started',
-  local_scan_started: 'local_scan_started',
-  scan_completed: 'scan_completed',
-  scan_failed: 'scan_failed',
-  import_started: 'import_started',
-  import_completed: 'import_completed',
-  import_failed: 'import_failed',
-  help_invoked: 'help_invoked',
-  cli_installed: 'cli_installed'
+const EVENTS = {
+  radar_scan_started: 'radar_scan_started',
+  radar_scan_completed: 'radar_scan_completed',
+  radar_scan_failed: 'radar_scan_failed',
+  radar_import_started: 'radar_import_started',
+  radar_import_completed: 'radar_import_completed',
+  radar_import_failed: 'radar_import_failed',
+  radar_help_invoked: 'radar_help_invoked'
 }
 
-// Emit a PostHog event with the given name and payload. The event name must be defined in ANALYTICS_EVENTS.
+// Emit an analytics event with the given name and payload. The event name must be defined in EVENTS.
 const track = (eventName, payload = {}) => {
-  const posthogEvent = ANALYTICS_EVENTS[eventName]
-  if (!posthogEvent) return
-  posthog.capture(posthogEvent, payload)
+  const analyticsEvent = EVENTS[eventName]
+  if (!analyticsEvent) return
+  analyticsClient.capture(analyticsEvent, payload)
 }
 
 const setEnabled = (enabled) => {
-  posthog.setEnabled(enabled)
+  analyticsClient.setEnabled(enabled)
+}
+
+const flush = async () => {
+  await analyticsClient.flush()
 }
 
 module.exports = {
-  ANALYTICS_EVENTS,
+  EVENTS,
+  ensureInstallationId,
+  flush,
   track,
   setEnabled
 }

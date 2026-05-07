@@ -81,7 +81,7 @@ module.exports = {
     if (!args.QUIET && !telemetry.enabled) {
       log(`ERROR: Telemetry not enabled.`)
       log(`Terminating with exit code 16. See 'radar help import' for list of possible exit codes.`)
-      analytics.track('import_failed', { flags: args, error: 'telemetry_not_enabled' })
+      analytics.track(analytics.EVENTS.radar_import_failed, { flags: args, error: 'telemetry_not_enabled' })
       return 0x10 // exit code
     }
 
@@ -126,7 +126,7 @@ module.exports = {
       }
     }
 
-    analytics.track('import_started', { flags: args, scanners, scanners_count: scanners.length })
+    analytics.track(analytics.EVENTS.radar_import_started, { flags: args, scanners, scanners_count: scanners.length })
 
     let scanID
     const timestamp = DateTime.now().toISO()
@@ -141,7 +141,7 @@ module.exports = {
       catch (error) {
         log(`ERROR: ${error.message}${error?.cause?.code === 'ECONNREFUSED' ? ': CONNECTION REFUSED' : ''}`)
         log(`Terminating with exit code 16. See 'radar help import' for list of possible exit codes.`)
-        analytics.track('import_failed', { flags: args, scanners, scanners_count: scanners.length, error: error.message })
+        analytics.track(analytics.EVENTS.radar_import_failed, { flags: args, scanners, scanners_count: scanners.length, error: error.message })
         return 0x10 // exit code
       }
 
@@ -164,11 +164,11 @@ module.exports = {
         SARIF.visualizations.display_totals(summary, args.FORMAT, log, telemetry.enabled && scanID)
       }
 
-      analytics.track('import_completed', { flags: args, scanners, scanners_count: scanners.length, scan_id: scanID, summary })
+      analytics.track(analytics.EVENTS.radar_import_completed, { flags: args, scanners, scanners_count: scanners.length, scan_id: scanID, summary })
 
       return 0 // exit code
     } catch (error) {
-      analytics.track('import_failed', { flags: args, scanners, scanners_count: scanners.length, error: error.message })
+      analytics.track(analytics.EVENTS.radar_import_failed, { flags: args, scanners, scanners_count: scanners.length, error: error.message })
       throw error
     }
   }

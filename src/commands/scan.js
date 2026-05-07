@@ -178,7 +178,7 @@ module.exports = {
 
     const isLocal = !telemetry.enabled || args.LOCAL
 
-    analytics.track('scan_command_started', {
+    analytics.track(analytics.EVENTS.radar_scan_started, {
       flags: args,
       scanners: scanners.map((s) => s.name),
       scanners_count: scanners.length,
@@ -187,11 +187,6 @@ module.exports = {
 
     if (isLocal) {
       log(`INFO: Running a local scan.\n`)
-      analytics.track('local_scan_started', {
-        flags: args,
-        scanners: scanners.map((s) => s.name),
-        scanners_count: scanners.length
-      })
     }
 
     // Get target git metadata.
@@ -239,7 +234,7 @@ module.exports = {
     catch (error) {
       log(`\n${error}`)
       if (!args.QUIET) log('Scan NOT completed!')
-      analytics.track('scan_failed', {
+      analytics.track(analytics.EVENTS.radar_scan_failed, {
         flags: args,
         scanners: scanners.map((s) => s.name),
         scanners_count: scanners.length,
@@ -320,7 +315,7 @@ module.exports = {
       exitCode = 0x8
     }
 
-    analytics.track('scan_completed', {
+    analytics.track(analytics.EVENTS.radar_scan_completed, {
       flags: args,
       scanners: scanners.map((s) => s.name),
       scanners_count: scanners.length,
