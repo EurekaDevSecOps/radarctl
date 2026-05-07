@@ -1,12 +1,22 @@
 #!/usr/bin/env node
 
-require('dotenv').config({ quiet: true })
 const path = require('node:path')
 const analytics = require(path.join(__dirname, 'src', 'analytics'))
 const commands = require(path.join(__dirname, 'src', 'commands'))
 const cli = require(path.join(__dirname, 'src')).build()
 
-const argv = process.argv.slice(2)
+const normalizeArgv = (argv) => {
+  if (argv[1] === 'help' && commands[argv[0]]) {
+    return [argv[0], '--help', ...argv.slice(2)]
+  }
+
+  return argv
+}
+
+const argv = normalizeArgv(process.argv.slice(2))
+const analyticsDisabled = argv.includes('--disable-analytics') || argv.includes('-noa')
+
+if (!analyticsDisabled) analytics.ensureInstallationId()
 
 const getHelpInvocation = (argv) => {
   const command = argv[0]?.endsWith(':') ? argv[0].slice(0, -1) : argv[0]
@@ -16,14 +26,15 @@ const getHelpInvocation = (argv) => {
 
   if (!isHelpCommand && !isHelpFlagForKnownCommand) return null
 
-  return { flags: argv }
+  return {
+    flags: Object.fromEntries(argv.map((value, index) => [String(index), value]))
+  }
 }
 
 const helpInvocation = getHelpInvocation(argv)
 if (helpInvocation) {
-  const analyticsDisabled = argv.includes('--disable-analytics') || argv.includes('-noa')
   analytics.setEnabled(!analyticsDisabled)
-  analytics.track('help_invoked', helpInvocation)
+  analytics.track(analytics.EVENTS.radar_help_invoked, helpInvocation)
 }
 
 // Check for updates (not in browsers).
@@ -33,4 +44,10 @@ cli.checkForUpdates()
 module.exports = cli
 
 // Run the command given on the command line.
-cli.run().then((exitCode) => { process.exitCode = exitCode ?? 0 })
+process.argv = [process.argv[0], process.argv[1], ...argv]
+
+cli.run()
+  .then(async (exitCode) => {
+    await analytics.flush()
+    process.exitCode = exitCode ?? 0
+  })
