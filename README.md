@@ -187,7 +187,7 @@ radar scan -f sarif -e warning,note
 
 #### SBOM Generation
 
-Radar CLI generates a CycloneDX SBOM after scanners complete and includes it in uploaded scan results when the scanned repository contains a supported dependency lockfile. SBOM generation runs CDXGen from a temporary workspace with dependency installation disabled, so scans remain predictable and do not run package manager installs. Repositories without supported lockfiles skip SBOM generation. Use `--skip-sbom` to skip this step.
+Radar CLI generates a CycloneDX SBOM after scanners complete and includes it in uploaded scan results when the scanned repository contains a CDXGen-supported dependency manifest or lockfile. SBOM generation runs CDXGen from a temporary workspace with dependency installation disabled, so scans remain predictable and do not run package manager installs. Repositories without supported dependency files skip SBOM generation. Use `--skip-sbom` to skip this step.
 
 #### Exit Codes
 

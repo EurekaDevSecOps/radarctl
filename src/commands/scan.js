@@ -252,12 +252,12 @@ module.exports = {
     // full scan results payload.
     let sboms
     if (!args.SKIP_SBOM) {
-      const lockfile = SBOM.findLockfile(target)
-      if (!lockfile) {
-        if (!args.QUIET) log('Skipping SBOM: no supported dependency lockfile found.')
+      const evidenceFile = SBOM.findLockfile(target)
+      if (!evidenceFile) {
+        if (!args.QUIET) log('Skipping SBOM: no supported dependency manifest or lockfile found.')
       } else {
         try {
-          if (!args.QUIET) log(`Generating SBOM from ${path.relative(target, lockfile)}:`)
+          if (!args.QUIET) log(`Generating SBOM from ${path.relative(target, evidenceFile)}:`)
           const generatedSbom = await SBOM.generate({ target, outfile: sbomFile, quiet: args.QUIET })
           sboms = generatedSbom.artifacts
         } catch (error) {
