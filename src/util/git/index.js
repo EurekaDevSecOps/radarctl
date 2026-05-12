@@ -160,6 +160,57 @@ function parseAzureDevOpsUrl(originUrl) {
   }
 }
 
+/**
+* Custom/self-hosted GitLab formats:
+* - `https://<host>/<group>/<repo>.git`
+* - `https://<host>/<group>/<subgroup>/<repo>.git`
+* - `git@<host>:<group>/<repo>.git`
+* - `ssh://git@<host>/<group>/<repo>.git`
+*/
+function parseCustomGitLabUrl(originUrl) {
+  if (!originUrl) return null
+
+  const parsePathParts = (rawPath) =>
+    rawPath.split('/').filter((part) => part)
+
+  const parseFromPath = ({ host, rawPath }) => {
+    if (!host || !rawPath) return null
+
+    const pathParts = parsePathParts(rawPath)
+    if (pathParts.length < 2) return null
+
+    const project = pathParts[pathParts.length - 1].replace(/\.git$/i, '')
+    const user = pathParts.slice(0, -1).join('/')
+    if (!user || !project) return null
+
+    const httpsUrl = `https://${host}/${user}/${project}.git`
+    return {
+      https: () => httpsUrl,
+      type: 'gitlab',
+      domain: host,
+      user,
+      project
+    }
+  }
+
+  const sshMatch = parseSshUrl(originUrl, { user: 'git' })
+  if (sshMatch) {
+    return parseFromPath({ host: sshMatch.host, rawPath: sshMatch.path })
+  }
+
+  if (!/^https?:\/\//i.test(originUrl)) return null
+
+  const cleanUrl = originUrl.replace(/^http:\/\//i, 'https://')
+  let url
+  try {
+    url = new URL(cleanUrl)
+  } catch (error) {
+    return null
+  }
+
+  return parseFromPath({ host: url.hostname, rawPath: url.pathname })
+}
+
 function parseGitInfoFromUrl(originUrl) {
   if (isAzureDevOpsUrl(originUrl)) {
     return parseAzureDevOpsUrl(originUrl);
@@ -170,7 +221,10 @@ function parseGitInfoFromUrl(originUrl) {
     if (bitbucketInfo) return bitbucketInfo;
   }
 
-  return hostedGitInfo.fromUrl(originUrl, { noGitPlus: true });
+  const hostedInfo = hostedGitInfo.fromUrl(originUrl, { noGitPlus: true });
+  if (hostedInfo) return hostedInfo
+
+  return parseCustomGitLabUrl(originUrl)
 }
 
 function metadata(folder) {
@@ -184,6 +238,12 @@ function metadata(folder) {
     // Get the repo name and owner.
     const originUrl = execSync('git config --get remote.origin.url', { cwd: folder }).toString().trim()
     const info = parseGitInfoFromUrl(originUrl)
+    if (!info) {
+      throw new Error(`unable to parse repository remote URL: ${originUrl}`)
+    }
+    if (!info.user || !info.project || !info.type || !info.domain || typeof info.https !== 'function') {
+      throw new Error(`unable to derive repository metadata from remote URL: ${originUrl}`)
+    }
     
     const ownerPath = info.user.split('/')
 
@@ -334,6 +394,7 @@ function isValidEmail(email) {
 }
 
 module.exports = {
+  parseGitInfoFromUrl,
   metadata,
   root
 }
