@@ -46,6 +46,7 @@ convert_with_docker()
     $PLATFORM_ARGS \
     --cidfile "$OUTPUT/spdx.cid" \
     --rm \
+    --user 0:0 \
     -v "$OUTPUT:/output:rw" \
     "$IMAGE" \
     convert \
