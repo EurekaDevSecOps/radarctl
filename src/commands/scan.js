@@ -288,9 +288,24 @@ module.exports = {
       summary = await SARIF.analysis.summarize(results.sarif, target)
     }
 
+    // Determine the correct exit code.
+    let exitCode = 0
+    if (!summary.errors.length && !summary.warnings.length && !summary.notes.length) {
+      // No vulnerabilities.
+      exitCode = 0
+    } else if (args.THRESHOLD) {
+      // Set the exit code to 8 if there are any vulnerabilities with severities at or above the given threshold.
+      if (is_error(args.THRESHOLD) && summary.errors.length > 0) exitCode = 0x8
+      if (is_warning(args.THRESHOLD) && summary.warnings.length > 0) exitCode = 0x8
+      if (is_note(args.THRESHOLD) && summary.notes.length > 0) exitCode = 0x8
+    } else {
+      // Set the exit code to 8 if there are any vulnerabilities.
+      exitCode = 0x8
+    }
+
     // Send telemetry: scan summary.
     if (telemetry.enabled && scanID && !args.LOCAL) {
-      const res = await telemetry.send(`scans/:scanID/completed`, { scanID }, { summary })
+      const res = await telemetry.send(`scans/:scanID/completed`, { scanID }, { summary, scanExitCode: exitCode })
       if (!res.ok) log(`WARNING: Scan status (completed) telemetry upload failed: [${res.status}] ${res.statusText}: ${await res.text()}`)
     }
 
@@ -305,21 +320,6 @@ module.exports = {
     // Display link to scan results in the dashboard.
     if (telemetry.enabled && scanURL && !args.QUIET) {
       log(`View scan findings in the Eureka dashboard: ${scanURL}`)
-    }
-
-    // Determine the correct exit code.
-    let exitCode = 0
-    if (!summary.errors.length && !summary.warnings.length && !summary.notes.length) {
-      // No vulnerabilities.
-      exitCode = 0
-    } else if (args.THRESHOLD) {
-      // Set the exit code to 8 if there are any vulnerabilities with severities at or above the given threshold.
-      if (is_error(args.THRESHOLD) && summary.errors.length > 0) exitCode = 0x8
-      if (is_warning(args.THRESHOLD) && summary.warnings.length > 0) exitCode = 0x8
-      if (is_note(args.THRESHOLD) && summary.notes.length > 0) exitCode = 0x8
-    } else {
-      // Set the exit code to 8 if there are any vulnerabilities.
-      exitCode = 0x8
     }
 
     // Display the exit code.
