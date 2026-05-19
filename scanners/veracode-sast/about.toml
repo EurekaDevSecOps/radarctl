@@ -1,0 +1,5 @@
+name = "veracode-sast"
+title = "Veracode SAST"
+description = "Identify application security findings in source code. Requires Veracode API key."
+categories = [ "SAST" ]
+cmd = "${assets}/run.sh ${target} ${assets} ${output}"

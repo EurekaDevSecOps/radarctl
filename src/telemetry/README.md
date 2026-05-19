@@ -11,15 +11,21 @@ const telemetry = require('./telemetry')
 
 All available telemetry events:
 ```js
-telemetry.send(`scans/:scanID/started`, { scanID }, { scanners })
+telemetry.send(`scans/started`, {}, { scanners, metadata, timestamp })
+telemetry.sendSensitive(`scans/:scanID/started`, { scanID }, { scanners, metadata, timestamp })
 telemetry.send(`scans/:scanID/completed`, { scanID }, { status, findings, log })
 telemetry.sendSensitive(`scans/:scanID/log`, { scanID }, log)
-telemetry.sendSensitive(`scans/:scanID/findings`, { scanID }, sarif)
+telemetry.sendSensitive(`scans/:scanID/results`, { scanID }, { findings: sarif, log, sboms })
 ```
 
-To send a telemetry event indicating that a scan has started:
+To send a telemetry event indicating that a scan has started (stage 1):
 ```js
-telemetry.send(`scans/:scanID/started`, { scanID }, { scanners })
+telemetry.send(`scans/started`, {}, { scanners, metadata })
+```
+
+To send a telemetry event indicating that a scan has started (stage 2):
+```js
+telemetry.sendSensitive(`scans/:scanID/started`, { scanID }, { metadata })
 ```
 
 To send a telemetry event indicating that a scan has completed:
@@ -32,9 +38,9 @@ To send a telemetry event with the scan console log:
 telemetry.sendSensitive(`scans/:scanID/log`, { scanID }, log)
 ```
 
-To send a telemetry event with the scan vulnerability findings:
+To send a telemetry event with the scan vulnerability findings and generated SBOM:
 ```js
-telemetry.sendSensitive(`scans/:scanID/findings`, { scanID }, sarif)
+telemetry.sendSensitive(`scans/:scanID/results`, { scanID }, { findings: sarif, log, sboms })
 ```
 
 ### Step 3: (optional) You can await on telemetry.send to read the fetch response.

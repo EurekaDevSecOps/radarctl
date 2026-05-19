@@ -1,6 +1,7 @@
 module.exports = {
   transforms: {
     escalate: require('./transforms/escalate'),
+    embedDirectives: require('./transforms/embed_directives'),
     merge: require('./transforms/merge'),
     normalize: require('./transforms/normalize')
   },

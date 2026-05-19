@@ -1,6 +1,178 @@
 const { execSync } = require('node:child_process')
 const hostedGitInfo = require('hosted-git-info')
 
+
+function isAzureDevOpsUrl(originUrl) {
+  const knownAzureDomains = [
+    'dev.azure.com',
+    'visualstudio.com',
+    'ssh.dev.azure.com',
+    'vs-ssh.visualstudio.com'
+  ]
+
+  return knownAzureDomains.some((url) => originUrl.includes(url))
+}
+
+function isBitbucketUrl(originUrl) {
+  if (!originUrl) return false
+  return originUrl.toLowerCase().includes("bitbucket.org");
+}
+
+function parseSshUrl(originUrl, { user } = {}) {
+  const match = originUrl.match(/^(?:ssh:\/\/)?([^@]+)@([^:/]+)(?::|\/)(.+)$/)
+  if (!match) return null
+  if (user && match[1] !== user) return null
+  return {
+    user: match[1],
+    host: match[2],
+    path: match[3]
+  }
+}
+
+
+/**
+ * BitBucket formats:
+ * - `http://<user>@bitbucket.org/<workspace>/<repo>`
+ * - `https://bitbucket.org/<workspace>/<repo>`
+ * - `git@bitbucket.org:<workspace>/<repo>.git`
+ * - `ssh://git@bitbucket.org/<workspace>/<repo>.git`
+ * - The remote URL for BitBucket repositories may omit or include the .git suffix.
+ */
+function parseBitbucketUrl(originUrl) {
+  if (!originUrl) return null
+
+  const parsePathParts = (rawPath) =>
+    rawPath.split('/').filter((p) => p)
+
+  const sshMatch = parseSshUrl(originUrl, { user: 'git' })
+  if (sshMatch) {
+    const host = sshMatch.host
+    const pathParts = parsePathParts(sshMatch.path)
+    if (pathParts.length < 2) return null
+
+    const user = pathParts[0]
+    const project = pathParts[1].replace(/\.git$/i, '')
+    if (!user || !project) return null
+
+    const httpsUrl = `https://${host}/${user}/${project}`
+    return {
+      https: () => httpsUrl,
+      type: 'bitbucket',
+      domain: host,
+      user,
+      project
+    }
+  }
+
+  if (!/^https?:\/\//i.test(originUrl)) return null
+
+  const cleanUrl = originUrl.replace(/^http:\/\//i, 'https://')
+  let url
+  try {
+    url = new URL(cleanUrl)
+  } catch (error) {
+    return null
+  }
+
+  const pathParts = parsePathParts(url.pathname)
+  if (pathParts.length < 2) return null
+
+  const user = pathParts[0]
+  const project = pathParts[1].replace(/\.git$/i, '')
+  if (!user || !project) return null
+
+  const httpsUrl = `https://${url.hostname}/${user}/${project}`
+  return {
+    https: () => httpsUrl,
+    type: 'bitbucket',
+    domain: url.hostname,
+    user,
+    project
+  }
+}
+
+/**
+ * Azure DevOps formats:
+ * - `https://TOKEN@dev.azure.com/<org>/<project>/_git/<repo>`
+ * - `https://pat:TOKEN@dev.azure.com/<org>/<project>/_git/<repo>` (the "pat" here can be any arbitrary string)
+ * - `git@ssh.dev.azure.com:v3/<org>/<project>/<repo>`
+ * - `ssh://git@ssh.dev.azure.com/v3/<org>/<project>/<repo>`
+ * - `git@vs-ssh.visualstudio.com:v3/<org>/<project>/<repo>`
+ */
+function parseAzureDevOpsUrl(originUrl) {
+  const decodeComponentURI = (value) => {
+    try {
+      return decodeURIComponent(value)
+    } catch (error) {
+      throw new Error(`failed decoding Azure DevOps URL component: ${error.message}`)
+    }
+  }
+
+  const parsePathParts = (rawPath) =>
+    rawPath
+      .split('/')
+      .filter((p) => p)
+      .map((part) => decodeComponentURI(part))
+
+  const sshMatch = parseSshUrl(originUrl, { user: 'git' })
+  if (sshMatch) {
+    const host = sshMatch.host
+    let pathParts = parsePathParts(sshMatch.path)
+    if (pathParts[0] === 'v3') pathParts = pathParts.slice(1)
+    if (pathParts.length < 3) {
+      throw new Error(`Invalid Azure DevOps URL format: ${originUrl}`)
+    }
+
+    const [org, project, repo] = pathParts
+    const https =
+      host.includes('visualstudio.com')
+        ? `https://${org}.visualstudio.com/${project}/_git/${repo}`
+        : `https://dev.azure.com/${org}/${project}/_git/${repo}`
+
+    return {
+      https: () => https,
+      type: 'azure',
+      domain: host,
+      // project name
+      user: project,
+      // repo name
+      project: repo
+    }
+  }
+
+  // Strip credentials from URL
+  const cleanUrl = originUrl.replace(/https:\/\/([^@:]+:)?[^@]+@/, 'https://')
+  const url = new URL(cleanUrl)
+
+  const pathParts = parsePathParts(url.pathname)
+  if (pathParts.length < 4 || pathParts[2] !== '_git') {
+    throw new Error(`Invalid Azure DevOps URL format: ${originUrl}`)
+  }
+
+  return {
+    https: () => cleanUrl,
+    type: 'azure',
+    domain: url.hostname,
+    // project name
+    user: `${pathParts[0]}/${pathParts[1]}`, 
+    // repo name
+    project: pathParts[3]
+  }
+}
+
+function parseGitInfoFromUrl(originUrl) {
+  if (isAzureDevOpsUrl(originUrl)) {
+    return parseAzureDevOpsUrl(originUrl);
+  }
+
+  if (isBitbucketUrl(originUrl)) {
+    const bitbucketInfo = parseBitbucketUrl(originUrl);
+    if (bitbucketInfo) return bitbucketInfo;
+  }
+
+  return hostedGitInfo.fromUrl(originUrl, { noGitPlus: true });
+}
+
 function metadata(folder) {
   try {
     // Determine if we're scanning a valid git repo.
@@ -11,7 +183,8 @@ function metadata(folder) {
 
     // Get the repo name and owner.
     const originUrl = execSync('git config --get remote.origin.url', { cwd: folder }).toString().trim()
-    const info = hostedGitInfo.fromUrl(originUrl, { noGitPlus: true })
+    const info = parseGitInfoFromUrl(originUrl)
+    
     const ownerPath = info.user.split('/')
 
     // Get the branch name.
