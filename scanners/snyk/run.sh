@@ -72,7 +72,7 @@ for SLF in $SNYK_LANGS; do
         echo "[Snyk] Language or Framework not currently supported by Snyk. Falling back to legacy Snyk image."
     fi
     
-    docker run --rm \
+    docker run --platform linux/amd64 --rm \
         -v "${APP_DIR}":/app \
         -v "${CFG_DIR}":/tmp/radar-input \
         -v "${OUT_DIR}":/tmp/radar-output \
