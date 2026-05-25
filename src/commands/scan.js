@@ -6,6 +6,7 @@ const runner = require('../util/runner')
 const paths = require('../util/paths')
 const SBOM = require('../util/sbom')
 const { execFileSync } = require('node:child_process')
+const parseDiff = require('../util/git/diff')
 const { DateTime } = require('luxon')
 
 function is_error(threshold) {
@@ -247,7 +248,7 @@ module.exports = {
       // Filter findings to only those on changed lines, if a base ref was provided.
       if (args.DIFF) {
         const diffOutput = execFileSync('git', ['diff', `${args.DIFF}...HEAD`], { cwd: target }).toString()
-        const diffRanges = {} // TODO: parse diff into { file: [[start, end]] }
+        const diffRanges = parseDiff(diffOutput)
         SARIF.transforms.filterByDiff(results.sarif, diffRanges)
       }
 
