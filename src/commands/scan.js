@@ -41,6 +41,7 @@ module.exports = {
     { name: 'QUIET', short: 'q', long: 'quiet', type: 'boolean', description: 'suppress stdout logging' },
     { name: 'SCANNERS', short: 's', long: 'scanners', type: 'string', description: 'list of scanners to use' },
     { name: 'SKIP_SBOM', short: 'B', long: 'skipSbom', type: 'bool', description: 'skip SBOM generation' },
+    { name: 'DIFF', long: 'diff', type: 'string', description: 'base ref to filter findings by changed lines (e.g. main)' },
     { name: 'THRESHOLD', short: 't', long: 'threshold', type: 'string', description: 'severity threshold for non-zero exit code' }
   ],
   description: `
@@ -241,6 +242,13 @@ module.exports = {
       // Transform scan findings: treat warnings and notes as errors, and normalize location paths.
       if (escalations) results.sarif = SARIF.transforms.escalate(results.sarif, escalations)
       SARIF.transforms.normalize(results.sarif, target, metadata, git.root(target))
+
+      // Filter findings to only those on changed lines, if a base ref was provided.
+      if (args.DIFF) {
+        const diffOutput = '' // TODO: run git diff args.DIFF...HEAD
+        const diffRanges = {} // TODO: parse diff into { file: [[start, end]] }
+        SARIF.transforms.filterByDiff(results.sarif, diffRanges)
+      }
 
       // Scan target for @eureka-radar ignore directives and embed them in the SARIF.
       // Must run after normalize so file paths match the normalized URIs in results.
