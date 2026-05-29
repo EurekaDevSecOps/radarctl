@@ -1,5 +1,6 @@
 const HUNK_HEADER = /^@@ -\d+(?:,\d+)? \+(\d+)(?:,(\d+))? @@/
 
+// Returns Map<filePath, [startLine, endLine][]> of added-line ranges in the new file.
 module.exports = (diffOutput) => {
   const ranges = new Map()
   let currentFile = null

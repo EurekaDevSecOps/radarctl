@@ -43,7 +43,7 @@ module.exports = {
     { name: 'QUIET', short: 'q', long: 'quiet', type: 'boolean', description: 'suppress stdout logging' },
     { name: 'SCANNERS', short: 's', long: 'scanners', type: 'string', description: 'list of scanners to use' },
     { name: 'SKIP_SBOM', short: 'B', long: 'skipSbom', type: 'bool', description: 'skip SBOM generation' },
-    { name: 'DIFF', long: 'diff', type: 'string', description: 'base ref to filter findings by changed lines (e.g. main)' },
+    { name: 'DIFF', short: 'D', long: 'diff', type: 'string', description: 'base ref to filter findings by changed lines (e.g. main)' },
     { name: 'THRESHOLD', short: 't', long: 'threshold', type: 'string', description: 'severity threshold for non-zero exit code' }
   ],
   description: `
