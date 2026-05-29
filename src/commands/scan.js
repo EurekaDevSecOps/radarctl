@@ -43,7 +43,7 @@ module.exports = {
     { name: 'QUIET', short: 'q', long: 'quiet', type: 'boolean', description: 'suppress stdout logging' },
     { name: 'SCANNERS', short: 's', long: 'scanners', type: 'string', description: 'list of scanners to use' },
     { name: 'SKIP_SBOM', short: 'B', long: 'skipSbom', type: 'bool', description: 'skip SBOM generation' },
-    { name: 'DIFF', short: 'D', long: 'diff', type: 'string', description: 'base ref to filter findings by changed lines (e.g. main)' },
+    { name: 'DIFF', short: 'g', long: 'diff', type: 'string', description: 'base ref to filter findings by changed lines (e.g. main)' },
     { name: 'THRESHOLD', short: 't', long: 'threshold', type: 'string', description: 'severity threshold for non-zero exit code' }
   ],
   description: `
@@ -246,6 +246,7 @@ module.exports = {
       SARIF.transforms.normalize(results.sarif, target, metadata, git.root(target))
 
       // Filter findings to only those on changed lines, if a base ref was provided.
+      // Runs after normalize so the SARIF URIs match the paths from `git diff`.
       if (args.DIFF) {
         const diffOutput = execFileSync('git', ['diff', `${args.DIFF}...HEAD`], { cwd: target }).toString()
         const diffRanges = parseDiff(diffOutput)
