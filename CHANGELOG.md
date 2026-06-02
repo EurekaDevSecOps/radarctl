@@ -1,5 +1,41 @@
 # Changelog
 
+## [2.3.0](https://github.com/EurekaDevSecOps/radarctl/compare/v2.2.0...v2.3.0) (2026-05-11)
+
+
+### Improvements
+
+* **PE-16:** SBOM page and API ([#93](https://github.com/EurekaDevSecOps/radarctl/issues/93)) ([63194a6](https://github.com/EurekaDevSecOps/radarctl/commit/63194a6aed32fffd56588e39f41262791fdde2cc))
+
+
+### Miscellaneous Chores
+
+* Remove EUREKA_PROFILE usage ([#89](https://github.com/EurekaDevSecOps/radarctl/issues/89)) ([e504244](https://github.com/EurekaDevSecOps/radarctl/commit/e504244405d8867ffc50ca5d90bf26ee8e75677b))
+
+## [2.2.0](https://github.com/EurekaDevSecOps/radarctl/compare/v2.1.0...v2.2.0) (2026-04-24)
+
+
+### Improvements
+
+* Add autopackager to veracode-sast ([#87](https://github.com/EurekaDevSecOps/radarctl/issues/87)) ([dec6fc3](https://github.com/EurekaDevSecOps/radarctl/commit/dec6fc3c7ff526748f686a7c77e64645f087b4de))
+
+
+### Fixes
+
+* Autopackager for Veracode SAST ([#90](https://github.com/EurekaDevSecOps/radarctl/issues/90)) ([5ed27fd](https://github.com/EurekaDevSecOps/radarctl/commit/5ed27fd09ab76ba46e00c67e96b43d8d59caa162))
+
+## [2.1.0](https://github.com/EurekaDevSecOps/radarctl/compare/v2.0.2...v2.1.0) (2026-04-20)
+
+
+### Improvements
+
+* **PE-956:** Tag lines of code where a vulnerability should be ignored ([#77](https://github.com/EurekaDevSecOps/radarctl/issues/77)) ([a06bda1](https://github.com/EurekaDevSecOps/radarctl/commit/a06bda13441f9635bca0539b53fc198373c55aee))
+
+
+### Miscellaneous Chores
+
+* Echo scanner stdout log when debug flag is on ([#83](https://github.com/EurekaDevSecOps/radarctl/issues/83)) ([da9d014](https://github.com/EurekaDevSecOps/radarctl/commit/da9d0149bdff17fc47788800c73b03ef20345c47))
+
 ## [2.0.2](https://github.com/EurekaDevSecOps/radarctl/compare/v2.0.1...v2.0.2) (2026-04-13)
 
 

@@ -4,6 +4,7 @@ const path = require('node:path')
 const SARIF = require('../util/sarif')
 const runner = require('../util/runner')
 const paths = require('../util/paths')
+const SBOM = require('../util/sbom')
 const { DateTime } = require('luxon')
 
 function is_error(threshold) {
@@ -39,6 +40,7 @@ module.exports = {
     { name: 'OUTPUT', short: 'o', long: 'output', type: 'string', description: 'output SARIF file' },
     { name: 'QUIET', short: 'q', long: 'quiet', type: 'boolean', description: 'suppress stdout logging' },
     { name: 'SCANNERS', short: 's', long: 'scanners', type: 'string', description: 'list of scanners to use' },
+    { name: 'SKIP_SBOM', short: 'B', long: 'skipSbom', type: 'bool', description: 'skip SBOM generation' },
     { name: 'THRESHOLD', short: 't', long: 'threshold', type: 'string', description: 'severity threshold for non-zero exit code' }
   ],
   description: `
@@ -124,6 +126,7 @@ module.exports = {
     args.FORMAT ??= 'security'
     args.CATEGORIES ??= 'all'
     args.SCANNERS ??= ''
+    args.SKIP_SBOM ??= false
 
     // Normalize and/or rewrite args and options.
     args.TARGET = paths.resolveScanTarget(args.TARGET)
@@ -166,6 +169,7 @@ module.exports = {
     const tmpdir = path.join(scansdir, crypto.randomUUID()) // temporary output directory
     fs.mkdirSync(tmpdir, { recursive: true })
     const outfile = args.OUTPUT ? path.resolve(args.OUTPUT) : undefined // output file, if any
+    const sbomFile = path.join(tmpdir, 'sbom.cdx.json')
 
     // Validate scan parameters.
     if (!categories.length) throw new Error(`CATEGORIES must be one or more of '${availableCategories.join("', '")}', or 'all'`)
@@ -229,6 +233,11 @@ module.exports = {
         return 0x10 // exit code
       }
 
+      if (args.DEBUG && results.log) {
+        log()
+        log(results.log)
+      }
+
       // Transform scan findings: treat warnings and notes as errors, and normalize location paths.
       if (escalations) results.sarif = SARIF.transforms.escalate(results.sarif, escalations)
       SARIF.transforms.normalize(results.sarif, target, metadata, git.root(target))
@@ -240,9 +249,33 @@ module.exports = {
       // Write findings to the destination SARIF file.
       if (outfile) fs.writeFileSync(outfile, JSON.stringify(results.sarif, null, 2))
 
+      // Generate SBOM artifacts after scanners complete and before uploading the
+      // full scan results payload.
+      let sboms
+      if (!args.SKIP_SBOM) {
+        const evidenceFile = SBOM.findLockfile(target)
+        if (!evidenceFile) {
+          if (!args.QUIET) log('Skipping SBOM: no supported dependency manifest or lockfile found.')
+        } else {
+          try {
+            if (!args.QUIET) log(`Generating SBOM from ${path.relative(target, evidenceFile)}:`)
+            const generatedSbom = await SBOM.generate({ target, outfile: sbomFile, quiet: args.QUIET })
+            sboms = generatedSbom.artifacts
+          } catch (error) {
+            if (error.interrupted) {
+              if (!args.QUIET) log('\nSBOM generation interrupted.')
+              fs.rmSync(tmpdir, { recursive: true, force: true })
+              return 0x10
+            }
+            log(`WARNING: SBOM generation failed: ${error.message}`)
+            if (args.DEBUG && error.stderr) log(error.stderr)
+          }
+        }
+      }
+
       // Send telemetry: scan results.
       if (telemetry.enabled && scanID && !args.LOCAL) {
-        const res = await telemetry.sendSensitive(`scans/:scanID/results`, { scanID }, { findings: results.sarif, log: results.log })
+        const res = await telemetry.sendSensitive(`scans/:scanID/results`, { scanID }, { findings: results.sarif, log: results.log, sboms })
         if (!res.ok) log(`WARNING: Scan results telemetry upload failed: [${res.status}] ${res.statusText}: ${await res.text()}`)
       }
 
