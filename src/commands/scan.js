@@ -211,8 +211,6 @@ module.exports = {
         if (!res.ok) log(`WARNING: Scan started (stage 2) telemetry upload failed: [${res.status}] ${res.statusText}: ${await res.text()}`)
       }
 
-      throw new Error('Temporary test failure after scan started stage 2')
-
       // Run scanners.
       log(`Running ${scanners.length} of ${availableScanners.length} scanners:`)
       let results = { /* log, sarif */ }
