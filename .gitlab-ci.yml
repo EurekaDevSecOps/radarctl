@@ -23,4 +23,3 @@ radar-scan:
 
     variables:
         EUREKA_AGENT_TOKEN: $EUREKA_AGENT_TOKEN
-        EUREKA_PROFILE: $EUREKA_PROFILE
