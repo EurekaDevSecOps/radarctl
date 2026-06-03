@@ -148,6 +148,7 @@ If no target is specified, the current working directory is scanned.
 | `-f, --format`     | Output format for severity display: `security` (high/moderate/low) or `sarif` (error/warning/note). |
 | `-e, --escalate`   | Treat specified lower severities as high (e.g. `--escalate=moderate,low`).                          |
 | `-l, --local`      | Run a local scan (don't upload scan findings to Eureka).                                            |
+| `--skip-sbom`      | Skip SBOM generation.                                                                               |
 
 **PARAMETERS**
 
@@ -183,6 +184,10 @@ Or:
 # Treat warnings and notes as errors
 radar scan -f sarif -e warning,note
 ```
+
+#### SBOM Generation
+
+Radar CLI generates a CycloneDX SBOM after scanners complete and includes it in uploaded scan results when the scanned repository contains a CDXGen-supported dependency manifest or lockfile. SBOM generation runs CDXGen from a temporary workspace with dependency installation disabled, so scans remain predictable and do not run package manager installs. Repositories without supported dependency files skip SBOM generation. Use `--skip-sbom` to skip this step.
 
 #### Exit Codes
 
@@ -256,16 +261,15 @@ radar scan -s opengrep,gitleaks,grype -o report.sarif
 
 ### Upload Findings to Eureka ASPM
 
-See all findings in one place with deduplication, trend tracking, and risk prioritization. To upload results to **Eureka ASPM**, provide your API credentials via two environment variables: `EUREKA_AGENT_TOKEN` (your API token) and `EUREKA_PROFILE` (your profile ID). When these are set, Radar CLI automatically uploads results after each scan — letting you view your full scan history and all findings in the **Eureka ASPM Dashboard**.
+See all findings in one place with deduplication, trend tracking, and risk prioritization. To upload results to **Eureka ASPM**, provide your API credentials through the `EUREKA_AGENT_TOKEN` environment variable. When set, Radar CLI automatically uploads results after each scan — letting you view your full scan history and all findings in the **Eureka ASPM Dashboard**.
 
 ```bash
 export EUREKA_AGENT_TOKEN=<your token>
-export EUREKA_PROFILE=<your profile ID>
 
 radar scan -s opengrep,gitleaks,grype
 ```
 
-NOTE: To prevent Radar CLI from uploading scan findings even when you have `EUREKA_AGENT_TOKEN` and `EUREKA_PROFILE` set, you can pass the `-l/--local` option on the command line.
+NOTE: To prevent Radar CLI from uploading scan findings even when you have `EUREKA_AGENT_TOKEN` set, you can pass the `-l/--local` option on the command line.
 
 ---
 
@@ -289,7 +293,6 @@ Telemetry is **off by default**.
 Radar does **not** send any data externally unless you explicitly provide:
 
 * `EUREKA_AGENT_TOKEN`
-* `EUREKA_PROFILE`
 
 When provided:
 
@@ -307,7 +310,7 @@ When omitted:
 | Issue                                         | Cause                               | Solution                                                  |
 | --------------------------------------------- | ----------------------------------- | --------------------------------------------------------- |
 | ❌ `report.sarif` not found                   | Scan failed or invalid scanner list | Check scanner names and ensure Docker is running          |
-| ⚠️ No findings uploaded                       | Missing or invalid token/profile    | Set `EUREKA_AGENT_TOKEN` and `EUREKA_PROFILE`             |
+| ⚠️ No findings uploaded                       | Missing or invalid token    | Set `EUREKA_AGENT_TOKEN`             |
 | 🧱 `radar: command not found`                 | CLI not installed globally          | Run `npm i -g @eurekadevsecops/radar` again               |
 
 ---

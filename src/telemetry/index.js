@@ -6,51 +6,58 @@ class Telemetry {
   #EUREKA_AGENT_TOKEN = process.env.EUREKA_AGENT_TOKEN
   #USER_AGENT = `RadarCLI/${pkg.version} (${pkg.name}@${pkg.version}; ${process?.platform}-${process?.arch}; ${process?.release?.name}-${process?.version})`
   #EWA_URL
+  #failedScanID // ensure there that scan failure is reported only once
 
   constructor() {
     this.enabled = !!this.#EUREKA_AGENT_TOKEN
-    this.#EWA_URL = this.#claims(this.#EUREKA_AGENT_TOKEN)?.aud?.replace(/\/$/, '')
+    this.#EWA_URL = this.#claims(this.#EUREKA_AGENT_TOKEN).aud?.replace(/\/$/, '')
+    this.#failedScanID = undefined
   }
 
   async send(path, params, body, token) {
-    return fetch(this.#toPostURL(path, params, token), {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${token ?? this.#EUREKA_AGENT_TOKEN}`,
-        'Content-Type': this.#toContentType(path),
-        'User-Agent': this.#USER_AGENT,
-        'Accept': 'application/json'
-      },
-      body: this.#toBody(path, body)
-    })
-    .then(async (res) => {
-//TODO: Display this on stdout only if --debug option is selected on the cmd line.
-//if (!res.ok) console.log(`POST ${this.#toPostURL(path, params, token)} [${res.status}] ${res.statusText}: ${await res.text()}`)
-      return res
-    })
+    let res
+    try {
+      res = await this.#sendRaw(path, params, body, token)
+    } catch (error) {
+      await this.#reportScanFailure(path, params)
+      throw error
+    }
+    if (!res.ok) await this.#reportScanFailure(path, params)
+    return res
   }
 
   async sendSensitive(path, params, body) {
-    return this.send(path, params, body, await this.#token())
+    try {
+      return this.send(path, params, body, await this.#token())
+    } catch (error) {
+      await this.#reportScanFailure(path, params)
+      throw error
+    }
   }
 
   async receive(path, params, token) {
-    return fetch(this.#toReceiveURL(path, params, token), {
-      method: 'GET',
-      headers: {
-        'Authorization': `Bearer ${token ?? this.#EUREKA_AGENT_TOKEN}`,
-        'User-Agent': this.#USER_AGENT,
-        'Accept': 'application/json'
-      }
-    }).then(async (res) => {
-//TODO: Display this on stdout only if --debug option is selected on the cmd line.
-//if (!res.ok) console.log(`GET ${this.#toReceiveURL(path, params, token)} [${res.status}] ${res.statusText}`)
+    let res
+    try {
+      res = await this.#receiveRaw(path, params, token)
+    } catch (error) {
+      await this.#reportScanFailure(path, params)
+      throw error
+    }
+    if (!res.ok) await this.#reportScanFailure(path, params)
+    try {
       return await res.json()
-    })
+    } catch (error) {
+      await this.#reportScanFailure(path, params)
+    }
   }
 
   async receiveSensitive(path, params) {
-    return this.receive(path, params, await this.#token())
+    try {
+      return this.receive(path, params, await this.#token())
+    } catch (error) {
+      await this.#reportScanFailure(path, params)
+      throw error
+    }
   }
 
   //
@@ -71,20 +78,71 @@ class Telemetry {
         'Content-Type': 'application/json',
         'User-Agent': this.#USER_AGENT,
         'Accept': 'application/json'
-      }
+      },
+      body: JSON.stringify({})
     })
     if (!response.ok) throw new Error(`Internal Error: Failed to get VDBE auth token from EWA: ${response.statusText}: ${await response.text()}`)
     const data = await response.json()
     return data.token
   }
 
+  async #sendRaw(path, params, body, token) {
+    return fetch(this.#toPostURL(path, params, token), {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token ?? this.#EUREKA_AGENT_TOKEN}`,
+        'Content-Type': this.#toContentType(path),
+        'User-Agent': this.#USER_AGENT,
+        'Accept': 'application/json'
+      },
+      body: this.#toBody(path, body)
+    })
+    .then(async (res) => {
+//TODO: Display this on stdout only if --debug option is selected on the cmd line.
+//if (!res.ok) console.log(`POST ${this.#toPostURL(path, params, token)} [${res.status}] ${res.statusText}: ${await res.text()}`)
+      return res
+    })
+  }
+
+  async #receiveRaw(path, params, token) {
+    return fetch(this.#toReceiveURL(path, params, token), {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${token ?? this.#EUREKA_AGENT_TOKEN}`,
+        'User-Agent': this.#USER_AGENT,
+        'Accept': 'application/json'
+      }
+    }).then(async (res) => {
+//TODO: Display this on stdout only if --debug option is selected on the cmd line.
+//if (!res.ok) console.log(`GET ${this.#toReceiveURL(path, params, token)} [${res.status}] ${res.statusText}`)
+      return res
+    })
+  }
+
+  async #reportScanFailure(path, params) {
+    if (!this.enabled) return
+    const scanID = params?.scanID
+    if (!scanID || path === `scans/:scanID/failed`) return
+    // if scan failure already reported, skip
+    if (this.#failedScanID === scanID) return
+    
+    // mark scan failure as reported
+    this.#failedScanID = scanID
+
+    try {
+      // we could choose to pass the error and send it somewhere possibly
+      await this.#sendRaw(`scans/:scanID/failed`, { scanID }, {})
+    } catch (error) {
+    }
+  }
+
   #toPostURL(path, params, token) {
     const claims = this.#claims(token ?? this.#EUREKA_AGENT_TOKEN)
     const aud = claims.aud.replace(/\/$/, '')
     if (path === `scans/started`) return `${aud}/scans/started`
+    if (path === `scans/:scanID/started`) return `${aud}/scans/${params.scanID}/started`
     if (path === `scans/:scanID/completed`) return `${aud}/scans/${params.scanID}/completed`
-    if (path === `scans/:scanID/failed`) return `${aud}/scans/${params.scanID}/completed`
-    if (path === `scans/:scanID/metadata`) return `${aud}/scans/${params.scanID}/metadata`
+    if (path === `scans/:scanID/failed`) return `${aud}/scans/${params.scanID}/failed`
     if (path === `scans/:scanID/results`) return `${aud}/scans/${params.scanID}/results`
     throw new Error(`Internal Error: Unknown telemetry event: POST ${path}`)
   }
@@ -92,7 +150,7 @@ class Telemetry {
   #toReceiveURL(path, params, token) {
     const claims = this.#claims(token ?? this.#EUREKA_AGENT_TOKEN)
     const aud = claims.aud.replace(/\/$/, '')
-    if (path === `scans/:scanID/summary`) return `${aud}/scans/${params.scanID}/summary?profileId=${process.env.EUREKA_PROFILE}`
+    if (path === `scans/:scanID/summary`) return `${aud}/scans/${params.scanID}/summary`
     throw new Error(`Internal Error: Unknown telemetry event: GET ${path}`)
   }
 
@@ -102,11 +160,11 @@ class Telemetry {
   }
 
   #toBody(path, body) {
-    if (path === `scans/started`) body = { ...body, timestamp: DateTime.now().toISO(), profile_id: process.env.EUREKA_PROFILE }
-    if (path === `scans/:scanID/completed`) body = { ...this.#toFindings(body), timestamp: DateTime.now().toISO(), status: 'success', log: { sizeBytes: 0, warnings: 0, errors: 0, link: 'none' }, params: { id: '' }}
+    if (path === `scans/started`) body = { ...body }
+    if (path === `scans/:scanID/started`) body = { ...body }
+    if (path === `scans/:scanID/completed`) body = { ...this.#toFindings(body.summary), timestamp: DateTime.now().toISO(), status: 'success', log: { sizeBytes: 0, warnings: 0, errors: 0, link: 'none' }, params: { id: '' }}
     if (path === `scans/:scanID/failed`) body = { ...body, timestamp: DateTime.now().toISO(), status: 'failure', findings: { total: 0, critical: 0, high: 0, med: 0, low: 0 }, log: { sizeBytes: 0, warnings: 0, errors: 0, link: 'none' }, params: { id: '' }}
-    if (path === `scans/:scanID/metadata`) body = { metadata: body.metadata, profileId: process.env.EUREKA_PROFILE }
-    if (path === `scans/:scanID/results`) body = { findings: body.findings /* SARIF */, profileId: process.env.EUREKA_PROFILE, log: Buffer.from(body.log, 'utf8').toString('base64') }
+    if (path === `scans/:scanID/results`) body = { findings: body.findings /* SARIF */, log: Buffer.from(body.log, 'utf8').toString('base64'), sboms: body.sboms }
     return JSON.stringify(body)
   }
 
@@ -121,7 +179,6 @@ class Telemetry {
       }
     }
   }
-
 }
 
 module.exports = {

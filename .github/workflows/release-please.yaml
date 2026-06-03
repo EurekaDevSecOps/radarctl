@@ -1,0 +1,21 @@
+name: Prepare Release
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: write
+  issues: write
+  pull-requests: write
+
+jobs:
+  release-please:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: googleapis/release-please-action@v4
+        with:
+          config-file: .config/release-please/config.json
+          manifest-file: .config/release-please/manifest.json
+          token: ${{ secrets.EUREKA_GITHUB_PAT }}
