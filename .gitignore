@@ -2,11 +2,3 @@
 node_modules
 .vscode/
 .env
-.npmrc
-test.sarif
-AGENTS.md
-juice-shop
-radar-test
-myprojectinasubgroup
-Netcore
-*run.local.sh
