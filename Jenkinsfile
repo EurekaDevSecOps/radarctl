@@ -3,7 +3,6 @@ pipeline {
     
     environment {
         EUREKA_AGENT_TOKEN = credentials('EUREKA_AGENT_TOKEN')
-        EUREKA_PROFILE = credentials('EUREKA_PROFILE')
     }
     
     stages {
