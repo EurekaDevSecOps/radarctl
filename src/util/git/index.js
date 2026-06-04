@@ -1,5 +1,6 @@
 const { execSync } = require('node:child_process')
 const hostedGitInfo = require('hosted-git-info')
+const { isGitlabCi } = require('../ci')
 
 
 function isAzureDevOpsUrl(originUrl) {
@@ -15,10 +16,29 @@ function isAzureDevOpsUrl(originUrl) {
 
 function isBitbucketUrl(originUrl) {
   if (!originUrl) return false
-  return originUrl.toLowerCase().includes("bitbucket.org");
+  return originUrl.toLowerCase().includes('bitbucket.org')
+}
+
+function isGitlabHostUrl(originUrl) {
+  if (!originUrl) return false
+
+  const sshMatch = parseSshUrl(originUrl)
+  if (sshMatch) {
+    return sshMatch.host.toLowerCase().includes('gitlab')
+  }
+
+  if (!/^https?:\/\//i.test(originUrl)) return false
+
+  try {
+    const url = new URL(originUrl)
+    return url.hostname.toLowerCase().includes('gitlab')
+  } catch (error) {
+    return false
+  }
 }
 
 function parseSshUrl(originUrl, { user } = {}) {
+  if (/^https?:\/\//i.test(originUrl)) return null
   const match = originUrl.match(/^(?:ssh:\/\/)?([^@]+)@([^:/]+)(?::|\/)(.+)$/)
   if (!match) return null
   if (user && match[1] !== user) return null
@@ -66,10 +86,9 @@ function parseBitbucketUrl(originUrl) {
 
   if (!/^https?:\/\//i.test(originUrl)) return null
 
-  const cleanUrl = originUrl.replace(/^http:\/\//i, 'https://')
   let url
   try {
-    url = new URL(cleanUrl)
+    url = new URL(originUrl)
   } catch (error) {
     return null
   }
@@ -88,6 +107,63 @@ function parseBitbucketUrl(originUrl) {
     domain: url.hostname,
     user,
     project
+  }
+}
+
+// Fallback for GitLab-style remotes that hosted-git-info does not recognize.
+function parseGitlabSelfManagedUrl(originUrl) {
+  if (!originUrl) return null
+
+  const type = isGitlabCi() || isGitlabHostUrl(originUrl) ? 'gitlab' : 'git'
+
+  const parsePathParts = (rawPath) =>
+    rawPath.split('/').filter((p) => p)
+
+  const buildInfo = ({ domain, pathParts, httpsBaseUrl }) => {
+    if (pathParts.length < 2) return null
+
+    const project = pathParts.at(-1).replace(/\.git$/i, '')
+    const user = pathParts.slice(0, -1).join('/')
+    if (!user || !project) return null
+
+    const httpsUrl = `${httpsBaseUrl}/${user}/${project}`
+    return {
+      https: () => httpsUrl,
+      type,
+      domain,
+      user,
+      project
+    }
+  }
+
+  const sshMatch = parseSshUrl(originUrl)
+  if (sshMatch) {
+    return buildInfo({
+      domain: sshMatch.host,
+      pathParts: parsePathParts(sshMatch.path),
+      httpsBaseUrl: `https://${sshMatch.host}`
+    })
+  }
+
+  if (!/^https?:\/\//i.test(originUrl)) return null
+
+  let url
+  try {
+    url = new URL(originUrl)
+  } catch (error) {
+    return null
+  }
+
+  return buildInfo({
+    domain: url.host,
+    pathParts: parsePathParts(url.pathname),
+    httpsBaseUrl: url.origin
+  })
+}
+
+function parseFallbackGitInfoFromUrl(originUrl) {
+  if (isGitlabCi() || isGitlabHostUrl(originUrl)) {
+    return parseGitlabSelfManagedUrl(originUrl)
   }
 }
 
@@ -162,15 +238,18 @@ function parseAzureDevOpsUrl(originUrl) {
 
 function parseGitInfoFromUrl(originUrl) {
   if (isAzureDevOpsUrl(originUrl)) {
-    return parseAzureDevOpsUrl(originUrl);
+    return parseAzureDevOpsUrl(originUrl)
   }
 
   if (isBitbucketUrl(originUrl)) {
-    const bitbucketInfo = parseBitbucketUrl(originUrl);
-    if (bitbucketInfo) return bitbucketInfo;
+    const bitbucketInfo = parseBitbucketUrl(originUrl)
+    if (bitbucketInfo) return bitbucketInfo
   }
 
-  return hostedGitInfo.fromUrl(originUrl, { noGitPlus: true });
+  const hostedInfo = hostedGitInfo.fromUrl(originUrl, { noGitPlus: true })
+  if (hostedInfo) return hostedInfo
+
+  return parseFallbackGitInfoFromUrl(originUrl)
 }
 
 function metadata(folder) {
@@ -185,6 +264,10 @@ function metadata(folder) {
     const originUrl = execSync('git config --get remote.origin.url', { cwd: folder }).toString().trim()
     const info = parseGitInfoFromUrl(originUrl)
     
+    if (!info || !info.user || !info.project || !info.domain || !info.https) {
+      throw new Error(`unsupported remote.origin.url: ${originUrl}`)
+    }
+
     const ownerPath = info.user.split('/')
 
     // Get the branch name.
