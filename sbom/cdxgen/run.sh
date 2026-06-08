@@ -30,6 +30,7 @@ fi
 docker run \
   --cidfile "$3/cdxgen.cid" \
   --rm \
+  --user 0:0 \
   -v "$1:/src:ro" \
   -v "$3:/output:rw" \
   --entrypoint sh \
