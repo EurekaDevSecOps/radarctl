@@ -24,6 +24,14 @@ const setEnabled = (enabled) => {
   analyticsClient.setEnabled(enabled)
 }
 
+const setDebug = (enabled) => {
+  analyticsClient.setDebug(enabled)
+}
+
+const setLogger = (logger) => {
+  analyticsClient.setLogger(logger)
+}
+
 const flush = async () => {
   await analyticsClient.flush()
 }
@@ -32,6 +40,8 @@ module.exports = {
   EVENTS,
   ensureInstallationId,
   flush,
+  setDebug,
+  setLogger,
   track,
   setEnabled
 }

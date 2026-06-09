@@ -134,6 +134,8 @@ module.exports = {
 
     // Configure analytics for this run.
     analytics.setEnabled(!args.DISABLE_ANALYTICS)
+    analytics.setDebug(args.DEBUG)
+    analytics.setLogger(log)
     args.SKIP_SBOM ??= false
 
     // Normalize and/or rewrite args and options.
@@ -374,13 +376,6 @@ module.exports = {
 
       return exitCode
     } catch (error) {
-      analytics.track(analytics.EVENTS.radar_scan_failed, {
-        flags: args,
-        scanners: scanners.map((s) => s.name),
-        scanners_count: scanners.length,
-        local: isLocal,
-        error: error?.message ?? String(error)
-      })
       if (telemetry.enabled && scanID && !args.LOCAL) {
         try {
           const res = await telemetry.send(`scans/:scanID/failed`, { scanID })

@@ -57,6 +57,7 @@ module.exports = {
 
     // Configure analytics for this run.
     analytics.setEnabled(!args.DISABLE_ANALYTICS)
+    analytics.setLogger(log)
 
     // Normalize and/or rewrite args and options.
     args.INPUT = path.resolve(path.normalize(args.INPUT))
