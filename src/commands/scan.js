@@ -5,6 +5,8 @@ const SARIF = require('../util/sarif')
 const runner = require('../util/runner')
 const paths = require('../util/paths')
 const SBOM = require('../util/sbom')
+const { execFileSync } = require('node:child_process')
+const parseDiff = require('../util/git/diff')
 const { DateTime } = require('luxon')
 
 function is_error(threshold) {
@@ -37,10 +39,12 @@ module.exports = {
     { name: 'FORMAT', short: 'f', long: 'format', type: 'string', description: 'severity format' },
     { name: 'ID', short: 'i', long: 'id', type: 'string', description: 'scan ID to associate results with' },
     { name: 'LOCAL', short: 'l', long: 'local', type: 'boolean', description: 'local scan (no upload of findings to Eureka)' },
+    { name: 'DISABLE_ANALYTICS', short: 'noa', long: 'disable-analytics', type: 'boolean', description: 'disable analytics for this run' },
     { name: 'OUTPUT', short: 'o', long: 'output', type: 'string', description: 'output SARIF file' },
     { name: 'QUIET', short: 'q', long: 'quiet', type: 'boolean', description: 'suppress stdout logging' },
     { name: 'SCANNERS', short: 's', long: 'scanners', type: 'string', description: 'list of scanners to use' },
     { name: 'SKIP_SBOM', short: 'B', long: 'skipSbom', type: 'bool', description: 'skip SBOM generation' },
+    { name: 'DIFF', short: 'g', long: 'diff', type: 'string', description: 'base ref to filter findings by changed lines (e.g. main)' },
     { name: 'THRESHOLD', short: 't', long: 'threshold', type: 'string', description: 'severity threshold for non-zero exit code' }
   ],
   description: `
@@ -116,7 +120,7 @@ module.exports = {
     '$ radar scan -t moderate ' + '(non-zero exit code for severities moderate and higher)'.grey,
   ],
   run: async (toolbox, args, globals) => {
-    const { log, scanners: availableScanners, categories: availableCategories, telemetry, git } = toolbox
+    const { log, scanners: availableScanners, categories: availableCategories, telemetry, git, analytics } = toolbox
 
     // Enable debug mode, if needed.
     if (args.DEBUG) globals.debug = true
@@ -126,6 +130,12 @@ module.exports = {
     args.FORMAT ??= 'security'
     args.CATEGORIES ??= 'all'
     args.SCANNERS ??= ''
+    args.DISABLE_ANALYTICS ??= false
+
+    // Configure analytics for this run.
+    analytics.setEnabled(!args.DISABLE_ANALYTICS)
+    analytics.setDebug(args.DEBUG)
+    analytics.setLogger(log)
     args.SKIP_SBOM ??= false
 
     // Normalize and/or rewrite args and options.
@@ -175,7 +185,16 @@ module.exports = {
     if (!categories.length) throw new Error(`CATEGORIES must be one or more of '${availableCategories.join("', '")}', or 'all'`)
     if (!scanners.length) throw new Error('No available scanners selected.')
 
-    if (!telemetry.enabled || args.LOCAL) {
+    const isLocal = !telemetry.enabled || args.LOCAL
+
+    analytics.track(analytics.EVENTS.radar_scan_started, {
+      flags: args,
+      scanners: scanners.map((s) => s.name),
+      scanners_count: scanners.length,
+      local: isLocal
+    })
+
+    if (isLocal) {
       log(`INFO: Running a local scan.\n`)
     }
 
@@ -225,6 +244,13 @@ module.exports = {
       catch (error) {
         log(`\n${error}`)
         if (!args.QUIET) log('Scan NOT completed!')
+        analytics.track(analytics.EVENTS.radar_scan_failed, {
+          flags: args,
+          scanners: scanners.map((s) => s.name),
+          scanners_count: scanners.length,
+          local: isLocal,
+          error: error?.message ?? String(error)
+        })
         if (telemetry.enabled && scanID && !args.LOCAL) {
           const res = await telemetry.send(`scans/:scanID/failed`, { scanID })
           if (!res.ok) log(`WARNING: Scan status (not completed) telemetry upload failed: [${res.status}] ${res.statusText}: ${await res.text()}`)
@@ -241,6 +267,14 @@ module.exports = {
       // Transform scan findings: treat warnings and notes as errors, and normalize location paths.
       if (escalations) results.sarif = SARIF.transforms.escalate(results.sarif, escalations)
       SARIF.transforms.normalize(results.sarif, target, metadata, git.root(target))
+
+      // Filter findings to only those on changed lines, if a base ref was provided.
+      // Runs after normalize so the SARIF URIs match the paths from `git diff`.
+      if (args.DIFF) {
+        const diffOutput = execFileSync('git', ['diff', `${args.DIFF}...HEAD`], { cwd: target }).toString()
+        const diffRanges = parseDiff(diffOutput)
+        SARIF.transforms.filterByDiff(results.sarif, diffRanges)
+      }
 
       // Scan target for @eureka-radar ignore directives and embed them in the SARIF.
       // Must run after normalize so file paths match the normalized URIs in results.
@@ -322,6 +356,15 @@ module.exports = {
         // Set the exit code to 8 if there are any vulnerabilities.
         exitCode = 0x8
       }
+
+      analytics.track(analytics.EVENTS.radar_scan_completed, {
+        flags: args,
+        scanners: scanners.map((s) => s.name),
+        scanners_count: scanners.length,
+        local: isLocal,
+        scan_id: scanID,
+        summary
+      })
 
       // Display the exit code.
       if (!args.QUIET && exitCode !== 0) {
