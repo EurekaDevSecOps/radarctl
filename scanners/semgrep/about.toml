@@ -1,0 +1,6 @@
+name = "semgrep"
+title = "Semgrep"
+description = "Fast, open-source, static analysis tool that searches code, finds bugs, and enforces secure guardrails and coding standards. Semgrep supports 30+ languages and can run in an IDE, as a pre-commit check, and as part of CI/CD workflows."
+categories = [ "SAST", "SCA", "Secrets" ]
+default = false
+cmd = "${assets}/run.sh ${target} ${assets} ${output}"
