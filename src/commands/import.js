@@ -1,9 +1,12 @@
-const crypto = require('node:crypto')
 const fs = require('node:fs')
 const path = require('node:path')
-const os = require('node:os')
 const SARIF = require('../util/sarif')
-const runner = require('../util/runner')
+const {
+  parseRepositoryValue,
+  parseRepositoryFromSarif
+} = require('../util/repository')
+const { DateTime } = require('luxon')
+
 module.exports = {
   summary: 'import vulnerabilities',
   args: {
@@ -18,11 +21,13 @@ module.exports = {
     { name: 'ESCALATE', short: 'e', long: 'escalate', type: 'string', description: 'severities to treat as high/error' },
     { name: 'FORMAT', short: 'f', long: 'format', type: 'string', description: 'severity format' },
     { name: 'DISABLE_ANALYTICS', short: 'noa', long: 'disable-analytics', type: 'boolean', description: 'disable analytics for this run' },
-    { name: 'QUIET', short: 'q', long: 'quiet', type: 'boolean', description: 'suppress stdout logging' }
+    { name: 'QUIET', short: 'q', long: 'quiet', type: 'boolean', description: 'suppress stdout logging' },
+    { name: 'REPOSITORY', short: 'r', long: 'repository', type: 'string', description: 'repository in owner[/path]/name format (optional)' }
   ],
   description: `
     Imports vulnerabilities from the input SARIF file given by INPUT argument.
     The SARIF file must have been produced by scanners supported by Radar CLI.
+    The repository must have been added to your Eureka organization.
 
     When quiet mode is selected with the QUIET command-line option, most stdout
     logs are ommitted except for errors that occur with the importing process.
@@ -37,15 +42,14 @@ module.exports = {
         16 - Import aborted due to unexpected error.
   `,
   examples: [
-    '$ radar import scan.sarif ' + '(import findings from SARIF file)'.grey,
-    '$ radar import -f security scan.sarif ' + '(displays findings as high, moderate, and low)'.grey,
-    '$ radar import -f sarif scan.sarif ' + '(displays findings as error, warning, and note)'.grey,
-    '$ radar import -e moderate,low scan.sarif ' + '(treat lower severities as high)'.grey,
-    '$ radar import -f sarif -e warning,note scan.sarif ' + '(treat lower severities as errors)'.grey
+    '$ radar import scan.sarif -r myorg/myproject ' + '(import findings from SARIF file)'.grey,
+    '$ radar import -f security scan.sarif -r myorg/myproject ' + '(displays findings as high, moderate, and low)'.grey,
+    '$ radar import -f sarif scan.sarif -r myorg/myproject ' + '(displays findings as error, warning, and note)'.grey,
+    '$ radar import -e moderate,low scan.sarif -r myorg/myproject ' + '(treat lower severities as high)'.grey,
+    '$ radar import -f sarif -e warning,note scan.sarif -r myorg/myproject' + '(treat lower severities as errors)'.grey
   ],
   run: async (toolbox, args) => {
-    const { log, scanners: availableScanners, telemetry, analytics } = toolbox
-    const scanners = []
+    const { log, telemetry, analytics } = toolbox
 
     // Set defaults for args and options.
     args.FORMAT ??= 'security'
@@ -64,6 +68,9 @@ module.exports = {
       if (args.FORMAT === 'sarif' && severity !== 'warning' && severity !== 'note') throw new Error(`Severity to escalate must be 'warning' or 'note'`)
     })
 
+    const cliRepository = args.REPOSITORY ? parseRepositoryValue(args.REPOSITORY) : null
+    if (args.REPOSITORY && !cliRepository) throw new Error(`REPOSITORY must be in the format 'owner[/path]/name'`)
+
     // Derive scan parameters.
     const escalations = args.ESCALATE?.split(',').map(severity => {
       if (severity === 'moderate') return 'warning'
@@ -71,32 +78,62 @@ module.exports = {
       return severity
     })
 
+    if (!args.QUIET && !telemetry.enabled) {
+      log(`ERROR: Telemetry not enabled.`)
+      log(`Terminating with exit code 16. See 'radar help import' for list of possible exit codes.`)
+      analytics.track('import_failed', { flags: args, error: 'telemetry_not_enabled' })
+      return 0x10 // exit code
+    }
+
+    const results = { log: `Import from "${args.INPUT}"` }
+    results.sarif = JSON.parse(fs.readFileSync(args.INPUT, 'utf8'))
+
+    const scanners = []
+    for (const run of results.sarif.runs) {
+      const scanner = run.tool.driver?.properties?.scanner_name ?? run.tool.driver.name
+      scanners.push(scanner)
+    }
+
+    const sarifRepository = parseRepositoryFromSarif(results.sarif)
+    const resolvedRepository = cliRepository ?? sarifRepository
+
+    const importRepoOwner = resolvedRepository?.owner ?? ''
+    const importRepoPath = resolvedRepository?.path ?? ''
+    const importRepoName = resolvedRepository?.name ?? ''
+
+    const scanMetadata = {
+      type: 'git',
+      repo: {
+        url: {
+          origin: '',
+          https: ''
+        },
+        source: {
+          type: '',
+          domain: ''
+        },
+        owner: importRepoOwner,
+        path: importRepoPath,
+        name: importRepoName,
+        abbrevs: 0,
+        contributors: []
+      },
+      commit: {
+        id: '',
+        time: Date.now(),
+        branch: '',
+        tags: []
+      }
+    }
+
+    analytics.track('import_started', { flags: args, scanners, scanners_count: scanners.length })
+
+    let scanID
+    const timestamp = DateTime.now().toISO()
+
     try {
-      // Check that telemetry is enabled.
-      if (!args.QUIET && !telemetry.enabled) {
-        log(`ERROR: Telemetry not enabled.`)
-        log(`Terminating with exit code 16. See 'radar help import' for list of possible exit codes.`)
-        analytics.track('import_failed', { flags: args, error: 'telemetry_not_enabled' })
-        return 0x10 // exit code
-      }
-
-      // Results include the log and the SARIF findings.
-      const results = { log: `Import from "${args.INPUT}"` }
-      results.sarif = JSON.parse(fs.readFileSync(args.INPUT, 'utf8'))
-
-      // Read scanner names from the input SARIF.
-      for (const run of results.sarif.runs) {
-        const scanner = run.tool.driver?.properties?.scanner_name ?? run.tool.driver.name
-        scanners.push(scanner)
-      }
-
-      analytics.track('import_started', { flags: args, scanners, scanners_count: scanners.length })
-
-      // Send telemetry: scan started.
-      let scanID = undefined
-      // TODO: Should pass scanID to the server; not read it from the server.
       try {
-        const res = await telemetry.send(`scans/started`, {}, { scanners })
+        const res = await telemetry.send(`scans/started`, {}, { scanners, metadata: scanMetadata, timestamp })
         if (!res.ok) throw new Error(`[${res.status}] ${res.statusText}: ${await res.text()}`)
         const data = await res.json()
         scanID = data.scan_id
@@ -108,21 +145,20 @@ module.exports = {
         return 0x10 // exit code
       }
 
-      // Transform scan findings: treat warnings and notes as errors, and normalize location paths.
+      const res = await telemetry.sendSensitive(`scans/:scanID/started`, { scanID }, { metadata: scanMetadata, timestamp })
+      if (!res.ok) log(`WARNING: Scan started (stage 2) telemetry upload failed: [${res.status}] ${res.statusText}: ${await res.text()}`)
+
+      // Transform scan findings: treat warnings and notes as errors.
       if (escalations) results.sarif = SARIF.transforms.escalate(results.sarif, escalations)
 
-      // Send telemetry: scan results.
       await telemetry.sendSensitive(`scans/:scanID/results`, { scanID }, { findings: results.sarif, log: results.log })
 
-      // Analyze scan results: group findings by severity level.
       const analysis = await telemetry.receiveSensitive(`scans/:scanID/summary`, { scanID })
       if (!analysis?.findingsBySeverity) throw new Error(`Failed to retrieve analysis summary for scan '${scanID}'`)
       const summary = analysis.findingsBySeverity
 
-      // Send telemetry: scan summary.
-      await telemetry.send(`scans/:scanID/completed`, { scanID }, summary)
+      await telemetry.send(`scans/:scanID/completed`, { scanID }, { summary })
 
-      // Display summarized findings.
       if (!args.QUIET) {
         process.stdout.write('Imported ')
         SARIF.visualizations.display_totals(summary, args.FORMAT, log, telemetry.enabled && scanID)
@@ -130,7 +166,6 @@ module.exports = {
 
       analytics.track('import_completed', { flags: args, scanners, scanners_count: scanners.length, scan_id: scanID, summary })
 
-      // Success.
       return 0 // exit code
     } catch (error) {
       analytics.track('import_failed', { flags: args, scanners, scanners_count: scanners.length, error: error.message })
