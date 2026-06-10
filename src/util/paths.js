@@ -35,32 +35,21 @@ const resolveScanTarget = (target) => {
   const provider = getCiProvider()
   const cloneDir = getCloneDir(provider)
 
-  switch (provider) {
-    case CICD_PROVIDERS.BITBUCKET.value:
-      assertCloneDir({
-        cloneDir,
-        label: CICD_PROVIDERS.BITBUCKET.env,
-        provider: CICD_PROVIDERS.BITBUCKET.label
-      })
-      return resolveWithinCloneDir({
-        target,
-        cloneDir,
-        label: CICD_PROVIDERS.BITBUCKET.env
-      })
-    case CICD_PROVIDERS.GITLAB.value:
-      assertCloneDir({
-        cloneDir,
-        label: CICD_PROVIDERS.GITLAB.env,
-        provider: CICD_PROVIDERS.GITLAB.label
-      })
-      return resolveWithinCloneDir({
-        target,
-        cloneDir,
-        label: CICD_PROVIDERS.GITLAB.env
-      })
-    case 'default':
-    default:
-      break
+  const providerConfig = Object.values(CICD_PROVIDERS).find(
+    ({ value }) => value === provider
+  )
+
+  if (providerConfig) {
+    assertCloneDir({
+      cloneDir,
+      label: providerConfig.env,
+      provider: providerConfig.label
+    })
+    return resolveWithinCloneDir({
+      target,
+      cloneDir,
+      label: providerConfig.env
+    })
   }
 
   // if no provider or target is set, default to current working directory
@@ -71,20 +60,15 @@ const resolveScanTarget = (target) => {
 const resolveScansDir = () => {
   const provider = getCiProvider()
   const cloneDir = getCloneDir(provider)
+  const providerConfig = Object.values(CICD_PROVIDERS).find(
+    ({ value }) => value === provider
+  )
 
-  if (provider === CICD_PROVIDERS.BITBUCKET.value) {
+  if (providerConfig) {
     assertCloneDir({
       cloneDir,
-      label: CICD_PROVIDERS.BITBUCKET.env,
-      provider: CICD_PROVIDERS.BITBUCKET.label
-    })
-  }
-
-  if (provider === CICD_PROVIDERS.GITLAB.value) {
-    assertCloneDir({
-      cloneDir,
-      label: CICD_PROVIDERS.GITLAB.env,
-      provider: CICD_PROVIDERS.GITLAB.label
+      label: providerConfig.env,
+      provider: providerConfig.label
     })
   }
 
