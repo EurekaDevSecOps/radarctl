@@ -20,6 +20,7 @@ module.exports = {
   options: [
     { name: 'ESCALATE', short: 'e', long: 'escalate', type: 'string', description: 'severities to treat as high/error' },
     { name: 'FORMAT', short: 'f', long: 'format', type: 'string', description: 'severity format' },
+    { name: 'DISABLE_ANALYTICS', short: 'noa', long: 'disable-analytics', type: 'boolean', description: 'disable analytics for this run' },
     { name: 'QUIET', short: 'q', long: 'quiet', type: 'boolean', description: 'suppress stdout logging' },
     { name: 'REPOSITORY', short: 'r', long: 'repository', type: 'string', description: 'repository in owner[/path]/name format (optional)' }
   ],
@@ -48,10 +49,15 @@ module.exports = {
     '$ radar import -f sarif -e warning,note scan.sarif -r myorg/myproject' + '(treat lower severities as errors)'.grey
   ],
   run: async (toolbox, args) => {
-    const { log, scanners: availableScanners, telemetry } = toolbox
+    const { log, telemetry, analytics } = toolbox
 
     // Set defaults for args and options.
     args.FORMAT ??= 'security'
+    args.DISABLE_ANALYTICS ??= false
+
+    // Configure analytics for this run.
+    analytics.setEnabled(!args.DISABLE_ANALYTICS)
+    analytics.setLogger(log)
 
     // Normalize and/or rewrite args and options.
     args.INPUT = path.resolve(path.normalize(args.INPUT))
@@ -73,25 +79,22 @@ module.exports = {
       return severity
     })
 
-    // Check that telemetry is enabled.
     if (!args.QUIET && !telemetry.enabled) {
       log(`ERROR: Telemetry not enabled.`)
       log(`Terminating with exit code 16. See 'radar help import' for list of possible exit codes.`)
+      analytics.track(analytics.EVENTS.radar_import_failed, { flags: args, error: 'telemetry_not_enabled' })
       return 0x10 // exit code
     }
 
-    // Results include the log and the SARIF findings.
     const results = { log: `Import from "${args.INPUT}"` }
     results.sarif = JSON.parse(fs.readFileSync(args.INPUT, 'utf8'))
 
-    // Read scanner names from the input SARIF.
     const scanners = []
     for (const run of results.sarif.runs) {
       const scanner = run.tool.driver?.properties?.scanner_name ?? run.tool.driver.name
       scanners.push(scanner)
     }
 
-    // use the repository from the CLI if present, otherwise fall back to SARIF
     const sarifRepository = parseRepositoryFromSarif(results.sarif)
     const resolvedRepository = cliRepository ?? sarifRepository
 
@@ -99,7 +102,6 @@ module.exports = {
     const importRepoPath = resolvedRepository?.path ?? ''
     const importRepoName = resolvedRepository?.name ?? ''
 
-    // construct scan metadata 
     const scanMetadata = {
       type: 'git',
       repo: {
@@ -115,7 +117,7 @@ module.exports = {
         path: importRepoPath,
         name: importRepoName,
         abbrevs: 0,
-        contributors: [],
+        contributors: []
       },
       commit: {
         id: '',
@@ -125,48 +127,50 @@ module.exports = {
       }
     }
 
-    // Send telemetry: scan started (stage 1).
-    let scanID = undefined
+    analytics.track(analytics.EVENTS.radar_import_started, { flags: args, scanners, scanners_count: scanners.length })
+
+    let scanID
     const timestamp = DateTime.now().toISO()
-    // TODO: Should pass scanID to the server; not read it from the server.
+
     try {
-      const res = await telemetry.send(`scans/started`, {}, { scanners, metadata: scanMetadata, timestamp })
-      if (!res.ok) throw new Error(`[${res.status}] ${res.statusText}: ${await res.text()}`)
-      const data = await res.json()
-      scanID = data.scan_id
+      try {
+        const res = await telemetry.send(`scans/started`, {}, { scanners, metadata: scanMetadata, timestamp })
+        if (!res.ok) throw new Error(`[${res.status}] ${res.statusText}: ${await res.text()}`)
+        const data = await res.json()
+        scanID = data.scan_id
+      }
+      catch (error) {
+        log(`ERROR: ${error.message}${error?.cause?.code === 'ECONNREFUSED' ? ': CONNECTION REFUSED' : ''}`)
+        log(`Terminating with exit code 16. See 'radar help import' for list of possible exit codes.`)
+        analytics.track(analytics.EVENTS.radar_import_failed, { flags: args, scanners, scanners_count: scanners.length, error: error.message })
+        return 0x10 // exit code
+      }
+
+      const res = await telemetry.sendSensitive(`scans/:scanID/started`, { scanID }, { metadata: scanMetadata, timestamp })
+      if (!res.ok) log(`WARNING: Scan started (stage 2) telemetry upload failed: [${res.status}] ${res.statusText}: ${await res.text()}`)
+
+      // Transform scan findings: treat warnings and notes as errors.
+      if (escalations) results.sarif = SARIF.transforms.escalate(results.sarif, escalations)
+
+      await telemetry.sendSensitive(`scans/:scanID/results`, { scanID }, { findings: results.sarif, log: results.log })
+
+      const analysis = await telemetry.receiveSensitive(`scans/:scanID/summary`, { scanID })
+      if (!analysis?.findingsBySeverity) throw new Error(`Failed to retrieve analysis summary for scan '${scanID}'`)
+      const summary = analysis.findingsBySeverity
+
+      await telemetry.send(`scans/:scanID/completed`, { scanID }, { summary })
+
+      if (!args.QUIET) {
+        process.stdout.write('Imported ')
+        SARIF.visualizations.display_totals(summary, args.FORMAT, log, telemetry.enabled && scanID)
+      }
+
+      analytics.track(analytics.EVENTS.radar_import_completed, { flags: args, scanners, scanners_count: scanners.length, scan_id: scanID, summary })
+
+      return 0 // exit code
+    } catch (error) {
+      analytics.track(analytics.EVENTS.radar_import_failed, { flags: args, scanners, scanners_count: scanners.length, error: error.message })
+      throw error
     }
-    catch (error) {
-      log(`ERROR: ${error.message}${error?.cause?.code === 'ECONNREFUSED' ? ': CONNECTION REFUSED' : ''}`)
-      log(`Terminating with exit code 16. See 'radar help import' for list of possible exit codes.`)
-      return 0x10 // exit code
-    }
-
-    // Send telemetry: scan started (stage 2).
-    let res = await telemetry.sendSensitive(`scans/:scanID/started`, { scanID }, { metadata: scanMetadata, timestamp })
-    if (!res.ok) log(`WARNING: Scan started (stage 2) telemetry upload failed: [${res.status}] ${res.statusText}: ${await res.text()}`)
-
-    // Transform scan findings: treat warnings and notes as errors, and normalize location paths.
-    if (escalations) results.sarif = SARIF.transforms.escalate(results.sarif, escalations)
-
-    // Send telemetry: scan results.
-    await telemetry.sendSensitive(`scans/:scanID/results`, { scanID }, { findings: results.sarif, log: results.log })
-
-    // Analyze scan results: group findings by severity level.
-    const analysis = await telemetry.receiveSensitive(`scans/:scanID/summary`, { scanID })
-
-    if (!analysis?.findingsBySeverity) throw new Error(`Failed to retrieve analysis summary for scan '${scanID}'`)
-    const summary = analysis.findingsBySeverity
-
-    // Send telemetry: scan summary.
-    await telemetry.send(`scans/:scanID/completed`, { scanID }, { summary })
-
-    // Display summarized findings.
-    if (!args.QUIET) {
-      process.stdout.write('Imported ')
-      SARIF.visualizations.display_totals(summary, args.FORMAT, log, telemetry.enabled && scanID)
-    }
-
-    // Success.
-    return 0 // exit code
   }
 }

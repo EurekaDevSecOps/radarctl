@@ -39,6 +39,7 @@ module.exports = {
     { name: 'FORMAT', short: 'f', long: 'format', type: 'string', description: 'severity format' },
     { name: 'ID', short: 'i', long: 'id', type: 'string', description: 'scan ID to associate results with' },
     { name: 'LOCAL', short: 'l', long: 'local', type: 'boolean', description: 'local scan (no upload of findings to Eureka)' },
+    { name: 'DISABLE_ANALYTICS', short: 'noa', long: 'disable-analytics', type: 'boolean', description: 'disable analytics for this run' },
     { name: 'OUTPUT', short: 'o', long: 'output', type: 'string', description: 'output SARIF file' },
     { name: 'QUIET', short: 'q', long: 'quiet', type: 'boolean', description: 'suppress stdout logging' },
     { name: 'SCANNERS', short: 's', long: 'scanners', type: 'string', description: 'list of scanners to use' },
@@ -119,7 +120,7 @@ module.exports = {
     '$ radar scan -t moderate ' + '(non-zero exit code for severities moderate and higher)'.grey,
   ],
   run: async (toolbox, args, globals) => {
-    const { log, scanners: availableScanners, categories: availableCategories, telemetry, git } = toolbox
+    const { log, scanners: availableScanners, categories: availableCategories, telemetry, git, analytics } = toolbox
 
     // Enable debug mode, if needed.
     if (args.DEBUG) globals.debug = true
@@ -129,6 +130,12 @@ module.exports = {
     args.FORMAT ??= 'security'
     args.CATEGORIES ??= 'all'
     args.SCANNERS ??= ''
+    args.DISABLE_ANALYTICS ??= false
+
+    // Configure analytics for this run.
+    analytics.setEnabled(!args.DISABLE_ANALYTICS)
+    analytics.setDebug(args.DEBUG)
+    analytics.setLogger(log)
     args.SKIP_SBOM ??= false
 
     // Normalize and/or rewrite args and options.
@@ -178,7 +185,16 @@ module.exports = {
     if (!categories.length) throw new Error(`CATEGORIES must be one or more of '${availableCategories.join("', '")}', or 'all'`)
     if (!scanners.length) throw new Error('No available scanners selected.')
 
-    if (!telemetry.enabled || args.LOCAL) {
+    const isLocal = !telemetry.enabled || args.LOCAL
+
+    analytics.track(analytics.EVENTS.radar_scan_started, {
+      flags: args,
+      scanners: scanners.map((s) => s.name),
+      scanners_count: scanners.length,
+      local: isLocal
+    })
+
+    if (isLocal) {
       log(`INFO: Running a local scan.\n`)
     }
 
@@ -228,6 +244,13 @@ module.exports = {
       catch (error) {
         log(`\n${error}`)
         if (!args.QUIET) log('Scan NOT completed!')
+        analytics.track(analytics.EVENTS.radar_scan_failed, {
+          flags: args,
+          scanners: scanners.map((s) => s.name),
+          scanners_count: scanners.length,
+          local: isLocal,
+          error: error?.message ?? String(error)
+        })
         if (telemetry.enabled && scanID && !args.LOCAL) {
           const res = await telemetry.send(`scans/:scanID/failed`, { scanID })
           if (!res.ok) log(`WARNING: Scan status (not completed) telemetry upload failed: [${res.status}] ${res.statusText}: ${await res.text()}`)
@@ -333,6 +356,15 @@ module.exports = {
         // Set the exit code to 8 if there are any vulnerabilities.
         exitCode = 0x8
       }
+
+      analytics.track(analytics.EVENTS.radar_scan_completed, {
+        flags: args,
+        scanners: scanners.map((s) => s.name),
+        scanners_count: scanners.length,
+        local: isLocal,
+        scan_id: scanID,
+        summary
+      })
 
       // Display the exit code.
       if (!args.QUIET && exitCode !== 0) {
