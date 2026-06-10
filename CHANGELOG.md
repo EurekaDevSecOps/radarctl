@@ -1,5 +1,17 @@
 # Changelog
 
+## [2.3.0](https://github.com/EurekaDevSecOps/radarctl/compare/v2.2.0...v2.3.0) (2026-05-11)
+
+
+### Improvements
+
+* **PE-16:** SBOM page and API ([#93](https://github.com/EurekaDevSecOps/radarctl/issues/93)) ([63194a6](https://github.com/EurekaDevSecOps/radarctl/commit/63194a6aed32fffd56588e39f41262791fdde2cc))
+
+
+### Miscellaneous Chores
+
+* Remove EUREKA_PROFILE usage ([#89](https://github.com/EurekaDevSecOps/radarctl/issues/89)) ([e504244](https://github.com/EurekaDevSecOps/radarctl/commit/e504244405d8867ffc50ca5d90bf26ee8e75677b))
+
 ## [2.2.0](https://github.com/EurekaDevSecOps/radarctl/compare/v2.1.0...v2.2.0) (2026-04-24)
 
 
