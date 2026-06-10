@@ -25,7 +25,7 @@ pipeline {
         stage('Run Scan') {
             steps {
                 echo 'Running security scan...'
-                sh 'npx radar scan -s opengrep'
+                sh 'npx radar scan'
             }
         }
     }
