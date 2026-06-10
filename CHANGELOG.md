@@ -1,5 +1,35 @@
 # Changelog
 
+## [2.4.0](https://github.com/EurekaDevSecOps/radarctl/compare/v2.3.0...v2.4.0) (2026-06-10)
+
+
+### Improvements
+
+* **PE-1085:** Add diff-aware scan filtering with --diff flag ([#97](https://github.com/EurekaDevSecOps/radarctl/issues/97)) ([d8c03c5](https://github.com/EurekaDevSecOps/radarctl/commit/d8c03c562c822aecb2a848cc2a7a444da78b3a24))
+* **scanners:** Add support for semgrep ([#36](https://github.com/EurekaDevSecOps/radarctl/issues/36)) ([026ff61](https://github.com/EurekaDevSecOps/radarctl/commit/026ff612295afef26767633337641f32dfe6d6b0))
+
+
+### Fixes
+
+* **PE-1068:** Fix sbom generation permissions write errors in CI/CD  ([#95](https://github.com/EurekaDevSecOps/radarctl/issues/95)) ([3356f09](https://github.com/EurekaDevSecOps/radarctl/commit/3356f097109bce1f7a81c16c4c23ffbee97f99f8))
+
+
+### Build System
+
+* Add .gitlab.yml ([#48](https://github.com/EurekaDevSecOps/radarctl/issues/48)) ([610806d](https://github.com/EurekaDevSecOps/radarctl/commit/610806d23b43d688549374e18bca2ad0962fe2ba))
+* Add Jenkinsfile ([#49](https://github.com/EurekaDevSecOps/radarctl/issues/49)) ([fb83f58](https://github.com/EurekaDevSecOps/radarctl/commit/fb83f58ba3c26204c2f786de135b9e15eddbcf17))
+
+
+### CI/CD
+
+* **commitlint:** Apply commitlint only to latest commit ([#98](https://github.com/EurekaDevSecOps/radarctl/issues/98)) ([03ce8c6](https://github.com/EurekaDevSecOps/radarctl/commit/03ce8c6958b38732c9444d1131d023f9526156d1))
+
+
+### Miscellaneous Chores
+
+* **ci:** Update actions/checkout to v6 ([#103](https://github.com/EurekaDevSecOps/radarctl/issues/103)) ([7710830](https://github.com/EurekaDevSecOps/radarctl/commit/7710830ccbe4131cf66f9f02e67e0423ede06a6c))
+* PE-937 - integrate posthog analytics ([#62](https://github.com/EurekaDevSecOps/radarctl/issues/62)) ([79c13f4](https://github.com/EurekaDevSecOps/radarctl/commit/79c13f446c856cbf882eca228cbcba6bdfb32745))
+
 ## [2.3.0](https://github.com/EurekaDevSecOps/radarctl/compare/v2.2.0...v2.3.0) (2026-05-11)
 
 
