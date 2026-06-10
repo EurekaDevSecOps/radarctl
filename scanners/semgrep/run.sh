@@ -19,4 +19,4 @@ docker run --rm \
     -v "${CFG_DIR}":/tmp/radar-input \
     -v "${OUT_DIR}":/tmp/radar-output \
     -e SEMGREP_APP_TOKEN="${SEMGREP_APP_TOKEN}" \
-    ghcr.io/eurekadevsecops/semgrep
+    ghcr.io/eurekadevsecops/radar-semgrep 2>&1
