@@ -1,0 +1,6 @@
+name = "snyk"
+title = "Snyk"
+description = "Automatically find, prioritize, & fix vulnerabilities in your open source dependencies with Snyk open source, developer-first SCA security tools. Requires Snyk API key to be present in environment variable SNYK_TOKEN during run."
+categories = [ "SCA" ]
+default = false
+cmd = "${assets}/run.sh ${target} ${assets} ${output}"
