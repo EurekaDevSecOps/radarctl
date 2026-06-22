@@ -27,7 +27,38 @@ With Radar CLI, you can:
 
 ---
 
-Telemetry is **off by default** — nothing is uploaded unless you explicitly enable it.
+Scan result uploads to Eureka are optional and depend on your configuration. Product analytics are enabled by default and can be disabled per run with `--disable-analytics`.
+
+---
+
+## Analytics
+
+Radar CLI collects limited product analytics to help improve the CLI, understand feature usage, and debug reliability issues across different environments.
+
+If you want to disable analytics for a run, use the `--disable-analytics` flag:
+
+```bash
+radar scan --disable-analytics
+```
+
+When this flag is set, Radar CLI does not send analytics events for that command run.
+
+<details>
+<summary>Analytics events collected by Radar CLI</summary>
+
+Radar CLI includes common runtime metadata with each analytics event, such as CLI version, Node.js version, platform, architecture, and the normalized command flags used for the run.
+
+| Event Name | Properties |
+| ---------- | ---------- |
+| `radar_scan_started` | `flags`, `scanners`, `scanners_count`, `local` |
+| `radar_scan_completed` | `flags`, `scanners`, `scanners_count`, `local`, `scan_id`, `summary` |
+| `radar_scan_failed` | `flags`, `scanners`, `scanners_count`, `local`, `error` |
+| `radar_import_started` | `flags`, `scanners`, `scanners_count` |
+| `radar_import_completed` | `flags`, `scanners`, `scanners_count`, `scan_id`, `summary` |
+| `radar_import_failed` | `flags`, `scanners`, `scanners_count`, `error` |
+| `radar_help_invoked` | `flags` |
+
+</details>
 
 ---
 
@@ -148,6 +179,7 @@ If no target is specified, the current working directory is scanned.
 | `-f, --format`     | Output format for severity display: `security` (high/moderate/low) or `sarif` (error/warning/note). |
 | `-e, --escalate`   | Treat specified lower severities as high (e.g. `--escalate=moderate,low`).                          |
 | `-l, --local`      | Run a local scan (don't upload scan findings to Eureka).                                            |
+| `--disable-analytics` | Disable analytics for this command run.                                                          |
 | `--skip-sbom`      | Skip SBOM generation.                                                                               |
 
 **PARAMETERS**
