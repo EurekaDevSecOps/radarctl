@@ -1,5 +1,17 @@
 # Changelog
 
+## [2.4.1](https://github.com/EurekaDevSecOps/radarctl/compare/v2.4.0...v2.4.1) (2026-07-02)
+
+
+### Documentation
+
+* Add list of all supported scanners ([#106](https://github.com/EurekaDevSecOps/radarctl/issues/106)) ([3162c33](https://github.com/EurekaDevSecOps/radarctl/commit/3162c334410b7cc7ec4dbdbbb1c08c418a162264))
+
+
+### Code Refactoring
+
+* **PE-1128:** Add support for gitlab self-managed repositories ([#104](https://github.com/EurekaDevSecOps/radarctl/issues/104)) ([7e99f68](https://github.com/EurekaDevSecOps/radarctl/commit/7e99f688cb24bd2b6887e24622675c68535ce25d))
+
 ## [2.4.0](https://github.com/EurekaDevSecOps/radarctl/compare/v2.3.0...v2.4.0) (2026-06-10)
 
 
