@@ -34,6 +34,9 @@ const isGithubActions = () => !!process.env.GITHUB_ACTIONS
 
 const isGitlabCi = () => !!process.env.GITLAB_CI
 
+const isSelfManagedGitlabCi = () =>
+  isGitlabCi() && process.env.CI_SERVER_HOST !== 'gitlab.com'
+
 const isBitbucketCi = () =>
   !!(
     process.env[CICD_PROVIDERS.BITBUCKET.env] ||
@@ -80,6 +83,7 @@ module.exports = {
   isBitbucketCi,
   isGithubActions,
   isGitlabCi,
+  isSelfManagedGitlabCi,
   getCiProvider,
   getCloneDir
 }
