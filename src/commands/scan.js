@@ -8,18 +8,11 @@ const SBOM = require('../util/sbom')
 const { execFileSync } = require('node:child_process')
 const parseDiff = require('../util/git/diff')
 const { DateTime } = require('luxon')
-
-function is_error(threshold) {
-  return is_warning(threshold) || threshold === 'high' || threshold === 'error'
-}
-
-function is_warning(threshold) {
-  return is_note(threshold) || threshold === 'moderate' || threshold === 'warning'
-}
-
-function is_note(threshold) {
-  return threshold === 'low' || threshold === 'note'
-}
+const { hasAttackScenariosAtThreshold, hasVulnerabilitiesAtThreshold } = require('../util/thresholds')
+const pollAttackScenarioSummary = require('../util/poll_attack_scenario_summary')
+const displayAttackScenarios = require('../util/display_attack_scenarios')
+const displayAttackScenarioTotals = require('../util/display_attack_scenario_totals')
+const displaySectionHeading = require('../util/display_section_heading')
 
 module.exports = {
   summary: 'scan for vulnerabilities',
@@ -40,12 +33,14 @@ module.exports = {
     { name: 'ID', short: 'i', long: 'id', type: 'string', description: 'scan ID to associate results with' },
     { name: 'LOCAL', short: 'l', long: 'local', type: 'boolean', description: 'local scan (no upload of findings to Eureka)' },
     { name: 'DISABLE_ANALYTICS', short: 'noa', long: 'disable-analytics', type: 'boolean', description: 'disable analytics for this run' },
+    { name: 'PIPELINE_POLICY', short: 'p', long: 'pipeline-policy', type: 'string', description: 'pipeline policy: scenarios, vulnerability, or all' },
     { name: 'OUTPUT', short: 'o', long: 'output', type: 'string', description: 'output SARIF file' },
     { name: 'QUIET', short: 'q', long: 'quiet', type: 'boolean', description: 'suppress stdout logging' },
+    { name: 'SCENARIO_THRESHOLD', short: 'a', long: 'scenario-threshold', type: 'string', description: 'attack-scenario threshold for non-zero exit code' },
     { name: 'SCANNERS', short: 's', long: 'scanners', type: 'string', description: 'list of scanners to use' },
     { name: 'SKIP_SBOM', short: 'B', long: 'skipSbom', type: 'bool', description: 'skip SBOM generation' },
     { name: 'DIFF', short: 'g', long: 'diff', type: 'string', description: 'base ref to filter findings by changed lines (e.g. main)' },
-    { name: 'THRESHOLD', short: 't', long: 'threshold', type: 'string', description: 'severity threshold for non-zero exit code' }
+    { name: 'THRESHOLD', short: 't', long: 'threshold', type: 'string', description: 'vulnerability severity threshold for non-zero exit code' }
   ],
   description: `
     Scans a target for vulnerabilities. Defaults to displaying findings on stdout.
@@ -91,16 +86,26 @@ module.exports = {
     Radar CLI from uploading scan findings even when you have 'EUREKA_AGENT_TOKEN' set,
     you can pass the LOCAL option on the command line.
 
-    Use the THRESHOLD option to return a non-zero exit code for severities at or
-    above the threshold. For example, setting THRESHOLD to "high" would result in
-    a non-zero exit code only if high or critical vulnerabilities were found by the
-    scan. Available values are low, moderate, high, and critical - or note, warning,
-    and error if using the SARIF native severity levels.
+    THRESHOLD controls the minimum vulnerability severity that returns a non-zero
+    exit code when the pipeline policy includes vulnerabilities. For example,
+    setting THRESHOLD to "high" would result in a non-zero exit code only if high
+    or critical vulnerabilities were found by the scan. Available values are low,
+    moderate, high, and critical - or note, warning, and error if using the SARIF
+    native severity levels. When omitted, any vulnerability returns a non-zero exit
+    code, preserving the existing behavior.
+
+    PIPELINE_POLICY controls whether vulnerabilities, attack scenarios, or both
+    determine the exit code. Available values are "scenarios", "vulnerability",
+    and "all". It defaults to "all". Scenario criteria require a remote scan.
+
+    SCENARIO_THRESHOLD controls the minimum active attack-scenario exploitability
+    level that returns a non-zero exit code. It defaults to "high". Available
+    values are low, moderate, high, and critical.
 
     Exit codes:
-         0 - Clean and successful scan. No vulnerabilities.
+         0 - Successful scan. Configured exit-code criteria not met.
          1 - Bad command, arguments, or options. Scan not completed.
-         8 - Scan completed with vulnerabilities (>= THRESHOLD severity, if set).
+         8 - Scan completed and configured exit-code criteria met.
      >= 16 - Scan aborted due to unexpected error.
   `,
   examples: [
@@ -117,7 +122,10 @@ module.exports = {
     '$ radar scan -c sca,sast -s all ' + '(use all scanners from given categories)'.grey,
     '$ radar scan -c sast -s opengrep ' + '(use only the opengrep scanner)'.grey,
     '$ radar scan -e moderate,low ' + '(treat moderate and low severities as high)'.grey,
-    '$ radar scan -t moderate ' + '(non-zero exit code for severities moderate and higher)'.grey,
+    '$ radar scan -t moderate ' + '(fail for moderate and higher vulnerabilities)'.grey,
+    '$ radar scan --scenario-threshold moderate ' + '(fail for moderate and higher attack scenarios)'.grey,
+    '$ radar scan --pipeline-policy scenarios ' + '(evaluate only attack scenarios)'.grey,
+    '$ radar scan --pipeline-policy vulnerability ' + '(evaluate only vulnerabilities)'.grey
   ],
   run: async (toolbox, args, globals) => {
     const { log, scanners: availableScanners, categories: availableCategories, telemetry, git, analytics } = toolbox
@@ -131,6 +139,8 @@ module.exports = {
     args.CATEGORIES ??= 'all'
     args.SCANNERS ??= ''
     args.DISABLE_ANALYTICS ??= false
+    args.PIPELINE_POLICY ??= 'all'
+    args.SCENARIO_THRESHOLD ??= 'high'
 
     // Configure analytics for this run.
     analytics.setEnabled(!args.DISABLE_ANALYTICS)
@@ -158,9 +168,20 @@ module.exports = {
       if (args.FORMAT === 'security' && severity !== 'moderate' && severity !== 'low') throw new Error(`Severity to escalate must be 'moderate' or 'low'`)
       if (args.FORMAT === 'sarif' && severity !== 'warning' && severity !== 'note') throw new Error(`Severity to escalate must be 'warning' or 'note'`)
     })
-    if (args.THRESHOLD) {
+    if (!['scenarios', 'vulnerability', 'all'].includes(args.PIPELINE_POLICY)) {
+      throw new Error('PIPELINE_POLICY must be one of \'scenarios\', \'vulnerability\' or \'all\'')
+    }
+    const useAttackScenarios = args.PIPELINE_POLICY !== 'vulnerability'
+    const useVulnerabilities = args.PIPELINE_POLICY !== 'scenarios'
+    if (useVulnerabilities && args.THRESHOLD) {
       if (args.FORMAT === 'security' && !['critical', 'high', 'moderate', 'low'].includes(args.THRESHOLD)) throw new Error(`THRESHOLD must be one of 'critical', 'high', 'moderate' or 'low'`)
       if (args.FORMAT === 'sarif' && !['error', 'warning', 'note'].includes(args.THRESHOLD)) throw new Error(`THRESHOLD must be one of 'error', 'warning' or 'note'`)
+    }
+    if (useAttackScenarios && !['critical', 'high', 'moderate', 'low'].includes(args.SCENARIO_THRESHOLD)) {
+      throw new Error('SCENARIO_THRESHOLD must be one of \'critical\', \'high\', \'moderate\' or \'low\'')
+    }
+    if (useAttackScenarios && (!telemetry.enabled || args.LOCAL)) {
+      throw new Error(`PIPELINE_POLICY '${args.PIPELINE_POLICY}' requires a remote scan with EUREKA_AGENT_TOKEN set`)
     }
 
     // Derive scan parameters.
@@ -315,11 +336,29 @@ module.exports = {
 
       // Analyze scan results: group findings by severity level.
       let summary
+      let scenarioSummary
       if (telemetry.enabled && scanID && !args.LOCAL) {
         const analysis = await telemetry.receiveSensitive(`scans/:scanID/summary`, { scanID })
         if (!analysis?.findingsBySeverity) throw new Error(`Failed to retrieve analysis summary for scan '${scanID}'`)
         summary = analysis.findingsBySeverity
+
+        if (useAttackScenarios) {
+          const attackScenarioSummary = await pollAttackScenarioSummary({
+            receiveSummary: () => telemetry.receiveSensitive('scans/:scanID/scenarios/summary', { scanID }),
+            onPoll: args.DEBUG
+              ? ({ attempt, intervalMs, status }) => {
+                  if (status === 'pending') log(`DEBUG: Attack scenario summary pending (attempt ${attempt}); polling again in ${intervalMs / 1000}s.`)
+                  if (status === 'completed') log(`DEBUG: Attack scenario summary completed after ${attempt} attempt${attempt === 1 ? '' : 's'}.`)
+                }
+              : undefined
+          })
+          scenarioSummary = attackScenarioSummary?.byScoreSeverity
+          if (['critical', 'high', 'moderate', 'low'].some((level) => !Array.isArray(scenarioSummary?.[level]))) {
+            throw new Error(`Failed to retrieve attack scenario summary for scan '${scanID}'`)
+          }
+        }
       } else {
+        if (useAttackScenarios) throw new Error(`Failed to retrieve attack scenario summary for scan '${scanID}'`)
         summary = await SARIF.analysis.summarize(results.sarif, target)
       }
 
@@ -331,31 +370,34 @@ module.exports = {
 
       // Display summarized findings.
       if (!args.QUIET) {
-        log()
-        SARIF.visualizations.display_findings(summary, args.FORMAT, log)
+        const hasVulnerabilities = summary.errors.length > 0 || summary.warnings.length > 0 || summary.notes.length > 0
+        const hasAttackScenarios = useAttackScenarios && Object.values(scenarioSummary).some((scenarios) => scenarios.length > 0)
+        if (hasVulnerabilities) {
+          log()
+          displaySectionHeading('Vulnerabilities', log)
+          SARIF.visualizations.display_findings(summary, args.FORMAT, log)
+        }
         if (outfile) log(`Findings exported to ${outfile}`)
+        if (hasAttackScenarios) {
+          log()
+          displayAttackScenarios(scenarioSummary, log)
+        }
+        log()
         SARIF.visualizations.display_totals(summary, args.FORMAT, log, telemetry.enabled && scanID && !args.LOCAL)
+        if (useAttackScenarios) displayAttackScenarioTotals(scenarioSummary, log)
       }
 
       // Display link to scan results in the dashboard.
       if (telemetry.enabled && scanURL && !args.QUIET) {
+        log()
         log(`View scan findings in the Eureka dashboard: ${scanURL}`)
       }
 
       // Determine the correct exit code.
       let exitCode = 0
-      if (!summary.errors.length && !summary.warnings.length && !summary.notes.length) {
-        // No vulnerabilities.
-        exitCode = 0
-      } else if (args.THRESHOLD) {
-        // Set the exit code to 8 if there are any vulnerabilities with severities at or above the given threshold.
-        if (is_error(args.THRESHOLD) && summary.errors.length > 0) exitCode = 0x8
-        if (is_warning(args.THRESHOLD) && summary.warnings.length > 0) exitCode = 0x8
-        if (is_note(args.THRESHOLD) && summary.notes.length > 0) exitCode = 0x8
-      } else {
-        // Set the exit code to 8 if there are any vulnerabilities.
-        exitCode = 0x8
-      }
+      const vulnerabilityThresholdMet = useVulnerabilities && hasVulnerabilitiesAtThreshold(summary, args.THRESHOLD)
+      const scenarioThresholdMet = useAttackScenarios && hasAttackScenariosAtThreshold(scenarioSummary, args.SCENARIO_THRESHOLD)
+      if (vulnerabilityThresholdMet || scenarioThresholdMet) exitCode = 0x8
 
       analytics.track(analytics.EVENTS.radar_scan_completed, {
         flags: args,
@@ -366,7 +408,7 @@ module.exports = {
         summary
       })
 
-      // Display the exit code.
+      // Display the non-zero exit code.
       if (!args.QUIET && exitCode !== 0) {
         log(`Terminating with exit code ${exitCode}. See 'radar help scan' for list of possible exit codes.`)
       }
