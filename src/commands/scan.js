@@ -8,11 +8,9 @@ const SBOM = require('../util/sbom')
 const { execFileSync } = require('node:child_process')
 const parseDiff = require('../util/git/diff')
 const { DateTime } = require('luxon')
-const { hasAttackScenariosAtThreshold, hasVulnerabilitiesAtThreshold } = require('../util/thresholds')
 const pollAttackScenarioSummary = require('../util/poll_attack_scenario_summary')
-const displayAttackScenarios = require('../util/display_attack_scenarios')
-const displayAttackScenarioTotals = require('../util/display_attack_scenario_totals')
-const displaySectionHeading = require('../util/display_section_heading')
+const displayScanResults = require('../util/display_scan_results')
+const pipelineExitCode = require('../util/pipeline_exit_code')
 
 module.exports = {
   summary: 'scan for vulnerabilities',
@@ -370,34 +368,26 @@ module.exports = {
 
       // Display summarized findings.
       if (!args.QUIET) {
-        const hasVulnerabilities = summary.errors.length > 0 || summary.warnings.length > 0 || summary.notes.length > 0
-        const hasAttackScenarios = useAttackScenarios && Object.values(scenarioSummary).some((scenarios) => scenarios.length > 0)
-        if (hasVulnerabilities) {
-          log()
-          displaySectionHeading('Vulnerabilities', log)
-          SARIF.visualizations.display_findings(summary, args.FORMAT, log)
-        }
-        if (outfile) log(`Findings exported to ${outfile}`)
-        if (hasAttackScenarios) {
-          log()
-          displayAttackScenarios(scenarioSummary, log)
-        }
-        log()
-        SARIF.visualizations.display_totals(summary, args.FORMAT, log, telemetry.enabled && scanID && !args.LOCAL)
-        if (useAttackScenarios) displayAttackScenarioTotals(scenarioSummary, log)
-      }
-
-      // Display link to scan results in the dashboard.
-      if (telemetry.enabled && scanURL && !args.QUIET) {
-        log()
-        log(`View scan findings in the Eureka dashboard: ${scanURL}`)
+        displayScanResults({
+          summary,
+          scenarioSummary,
+          useAttackScenarios,
+          outfile,
+          format: args.FORMAT,
+          baselined: telemetry.enabled && scanID && !args.LOCAL,
+          scanURL: telemetry.enabled && scanID && !args.LOCAL ? scanURL : undefined,
+          log
+        })
       }
 
       // Determine the correct exit code.
-      let exitCode = 0
-      const vulnerabilityThresholdMet = useVulnerabilities && hasVulnerabilitiesAtThreshold(summary, args.THRESHOLD)
-      const scenarioThresholdMet = useAttackScenarios && hasAttackScenariosAtThreshold(scenarioSummary, args.SCENARIO_THRESHOLD)
-      if (vulnerabilityThresholdMet || scenarioThresholdMet) exitCode = 0x8
+      const exitCode = pipelineExitCode({
+        policy: args.PIPELINE_POLICY,
+        vulnerabilitySummary: summary,
+        vulnerabilityThreshold: args.THRESHOLD,
+        scenarioSummary,
+        scenarioThreshold: args.SCENARIO_THRESHOLD
+      })
 
       analytics.track(analytics.EVENTS.radar_scan_completed, {
         flags: args,
