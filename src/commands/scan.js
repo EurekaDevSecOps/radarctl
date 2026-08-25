@@ -94,7 +94,7 @@ module.exports = {
 
     PIPELINE_POLICY controls whether vulnerabilities, attack scenarios, or both
     determine the exit code. Available values are "scenarios", "vulnerability",
-    and "all". It defaults to "all". Scenario criteria require a remote scan.
+    and "all". Attack scenarios will not be created for a local scan and will default to use a vulnerability policy. 
 
     SCENARIO_THRESHOLD controls the minimum active attack-scenario exploitability
     level that returns a non-zero exit code. It defaults to "high". Available
@@ -137,7 +137,7 @@ module.exports = {
     args.CATEGORIES ??= 'all'
     args.SCANNERS ??= ''
     args.DISABLE_ANALYTICS ??= false
-    args.PIPELINE_POLICY ??= 'all'
+    args.PIPELINE_POLICY ??= !telemetry.enabled || args.LOCAL ? 'vulnerability' : 'all'
     args.SCENARIO_THRESHOLD ??= 'high'
 
     // Configure analytics for this run.
