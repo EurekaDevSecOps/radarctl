@@ -88,7 +88,7 @@ module.exports = {
     exit code when the pipeline policy includes vulnerabilities. For example,
     setting THRESHOLD to "high" would result in a non-zero exit code only if high
     or critical vulnerabilities were found by the scan. Available values are low,
-    moderate, high, and critical - or note, warning, and error if using the SARIF
+    moderate, and high - or note, warning, and error if using the SARIF
     native severity levels. When omitted, any vulnerability returns a non-zero exit
     code, preserving the existing behavior.
 
@@ -172,7 +172,7 @@ module.exports = {
     const useAttackScenarios = args.PIPELINE_POLICY !== 'vulnerability'
     const useVulnerabilities = args.PIPELINE_POLICY !== 'scenarios'
     if (useVulnerabilities && args.THRESHOLD) {
-      if (args.FORMAT === 'security' && !['critical', 'high', 'moderate', 'low'].includes(args.THRESHOLD)) throw new Error(`THRESHOLD must be one of 'critical', 'high', 'moderate' or 'low'`)
+      if (args.FORMAT === 'security' && !['high', 'moderate', 'low'].includes(args.THRESHOLD)) throw new Error('THRESHOLD must be one of \'high\', \'moderate\' or \'low\'')
       if (args.FORMAT === 'sarif' && !['error', 'warning', 'note'].includes(args.THRESHOLD)) throw new Error(`THRESHOLD must be one of 'error', 'warning' or 'note'`)
     }
     if (useAttackScenarios && !['critical', 'high', 'moderate', 'low'].includes(args.SCENARIO_THRESHOLD)) {
