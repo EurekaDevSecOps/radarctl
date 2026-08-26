@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 
+require('colors')
 const path = require('node:path')
 const analytics = require(path.join(__dirname, 'src', 'analytics'))
 const commands = require(path.join(__dirname, 'src', 'commands'))
