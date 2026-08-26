@@ -169,16 +169,16 @@ module.exports = {
     if (!['scenarios', 'vulnerability', 'all'].includes(args.PIPELINE_POLICY)) {
       throw new Error('PIPELINE_POLICY must be one of \'scenarios\', \'vulnerability\' or \'all\'')
     }
-    const useAttackScenarios = args.PIPELINE_POLICY !== 'vulnerability'
+    const evaluateAttackScenarios = args.PIPELINE_POLICY !== 'vulnerability'
     const useVulnerabilities = args.PIPELINE_POLICY !== 'scenarios'
     if (useVulnerabilities && args.THRESHOLD) {
       if (args.FORMAT === 'security' && !['high', 'moderate', 'low'].includes(args.THRESHOLD)) throw new Error('THRESHOLD must be one of \'high\', \'moderate\' or \'low\'')
       if (args.FORMAT === 'sarif' && !['error', 'warning', 'note'].includes(args.THRESHOLD)) throw new Error(`THRESHOLD must be one of 'error', 'warning' or 'note'`)
     }
-    if (useAttackScenarios && !['critical', 'high', 'moderate', 'low'].includes(args.SCENARIO_THRESHOLD)) {
+    if (evaluateAttackScenarios && !['critical', 'high', 'moderate', 'low'].includes(args.SCENARIO_THRESHOLD)) {
       throw new Error('SCENARIO_THRESHOLD must be one of \'critical\', \'high\', \'moderate\' or \'low\'')
     }
-    if (useAttackScenarios && (!telemetry.enabled || args.LOCAL)) {
+    if (evaluateAttackScenarios && (!telemetry.enabled || args.LOCAL)) {
       throw new Error(`PIPELINE_POLICY '${args.PIPELINE_POLICY}' requires a remote scan with EUREKA_AGENT_TOKEN set`)
     }
 
@@ -340,23 +340,21 @@ module.exports = {
         if (!analysis?.findingsBySeverity) throw new Error(`Failed to retrieve analysis summary for scan '${scanID}'`)
         summary = analysis.findingsBySeverity
 
-        if (useAttackScenarios) {
-          const attackScenarioSummary = await pollAttackScenarioSummary({
-            receiveSummary: () => telemetry.receiveSensitive('scans/:scanID/scenarios/summary', { scanID }),
-            onPoll: args.DEBUG
-              ? ({ attempt, intervalMs, status }) => {
-                  if (status === 'pending') log(`DEBUG: Attack scenario summary pending (attempt ${attempt}); polling again in ${intervalMs / 1000}s.`)
-                  if (status === 'completed') log(`DEBUG: Attack scenario summary completed after ${attempt} attempt${attempt === 1 ? '' : 's'}.`)
-                }
-              : undefined
-          })
-          scenarioSummary = attackScenarioSummary?.byScoreSeverity
-          if (['critical', 'high', 'moderate', 'low'].some((level) => !Array.isArray(scenarioSummary?.[level]))) {
-            throw new Error(`Failed to retrieve attack scenario summary for scan '${scanID}'`)
-          }
+        const attackScenarioSummary = await pollAttackScenarioSummary({
+          receiveSummary: () => telemetry.receiveSensitive('scans/:scanID/scenarios/summary', { scanID }),
+          onPoll: args.DEBUG
+            ? ({ attempt, intervalMs, status }) => {
+                if (status === 'pending') log(`DEBUG: Attack scenario summary pending (attempt ${attempt}); polling again in ${intervalMs / 1000}s.`)
+                if (status === 'completed') log(`DEBUG: Attack scenario summary completed after ${attempt} attempt${attempt === 1 ? '' : 's'}.`)
+              }
+            : undefined
+        })
+        scenarioSummary = attackScenarioSummary?.byScoreSeverity
+        if (['critical', 'high', 'moderate', 'low'].some((level) => !Array.isArray(scenarioSummary?.[level]))) {
+          throw new Error(`Failed to retrieve attack scenario summary for scan '${scanID}'`)
         }
       } else {
-        if (useAttackScenarios) throw new Error(`Failed to retrieve attack scenario summary for scan '${scanID}'`)
+        if (evaluateAttackScenarios) throw new Error(`Failed to retrieve attack scenario summary for scan '${scanID}'`)
         summary = await SARIF.analysis.summarize(results.sarif, target)
       }
 
@@ -371,7 +369,7 @@ module.exports = {
         displayScanResults({
           summary,
           scenarioSummary,
-          useAttackScenarios,
+          useAttackScenarios: Boolean(scenarioSummary),
           outfile,
           format: args.FORMAT,
           baselined: telemetry.enabled && scanID && !args.LOCAL,
