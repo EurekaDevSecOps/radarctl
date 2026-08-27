@@ -153,6 +153,9 @@ If no target is specified, the current working directory is scanned.
 | `-l, --local`      | Run a local scan (don't upload scan findings to Eureka).                                            |
 | `--disable-analytics` | Disable analytics for this command run.                                                          |
 | `--skip-sbom`      | Skip SBOM generation.                                                                               |
+| `-p, --pipeline-policy` | Choose `scenarios`, `vulnerability`, or `all`. Defaults to `all` for uploaded scans and `vulnerability` for local scans. |
+| `-t, --threshold` | Minimum vulnerability severity for exit code `8`: `high`, `moderate`, or `low`. When omitted, any vulnerability matches. |
+| `-a, --scenario-threshold` | Minimum active attack-scenario level for exit code `8`: `critical`, `high` (default), `moderate`, or `low`. |
 
 **PARAMETERS**
 
@@ -195,13 +198,21 @@ Radar CLI generates a CycloneDX SBOM after scanners complete and includes it in 
 
 #### Exit Codes
 
-An exit code of `0` means the scan passed with no issues. Any other code means the scan failed — either due to new vulnerabilities found or an error during the scanning process.
+An exit code of `0` means the scan completed and its configured pipeline criteria were not met. Exit code `8` means the scan completed but its configured vulnerability or attack-scenario criteria were met. Other non-zero codes indicate invalid input or a scanning error.
+
+Remote scans default to evaluating both vulnerabilities and attack scenarios: matching either threshold returns exit code `8`. 
+
+Use `--pipeline-policy=vulnerability` for vulnerability-only behavior or `--pipeline-policy=scenarios` for scenario-only behavior. 
+`--threshold` only applies when the policy includes vulnerabilities; when omitted, any vulnerability returns exit code `8`, preserving the existing behavior. 
+`--scenario-threshold` only applies when the policy includes scenarios and defaults to `high`. 
+
+Attack scenarios will not be generated from a local scan. 
 
 | Code    | Meaning                                 |
 | ------- | --------------------------------------- |
-| `0`     | Clean and successful scan.              |
+| `0`     | Successful scan; exit criteria not met. |
 | `1`     | Invalid command, arguments, or options. |
-| `8–15`  | New vulnerabilities found.              |
+| `8`     | Configured exit criteria met.           |
 | `>=16`  | Aborted due to unexpected error.        |
 
 #### Examples

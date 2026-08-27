@@ -151,6 +151,7 @@ class Telemetry {
     const claims = this.#claims(token ?? this.#EUREKA_AGENT_TOKEN)
     const aud = claims.aud.replace(/\/$/, '')
     if (path === `scans/:scanID/summary`) return `${aud}/scans/${params.scanID}/summary`
+    if (path === 'scans/:scanID/scenarios/summary') return `${aud}/scans/${params.scanID}/scenarios/summary`
     throw new Error(`Internal Error: Unknown telemetry event: GET ${path}`)
   }
 
