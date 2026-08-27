@@ -1,0 +1,4 @@
+name = "cdxgen"
+title = "CDXGen"
+description = "Generate a CycloneDX SBOM using CDXGen."
+cmd = "${assets}/run.sh ${target} ${assets} ${output}"

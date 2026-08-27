@@ -32,7 +32,12 @@ class Telemetry {
 
   async sendSensitive(path, params, body) {
     this.#cacheTokenContext(path, params, body)
-    return this.send(path, params, body, await this.#token(params?.scanID))
+    try {
+      return this.send(path, params, body, await this.#token(params?.scanID))
+    } catch (error) {
+      await this.#reportScanFailure(path, params)
+      throw error
+    }
   }
 
   async receive(path, params, token) {
@@ -52,7 +57,12 @@ class Telemetry {
   }
 
   async receiveSensitive(path, params) {
-    return this.receive(path, params, await this.#token(params?.scanID))
+    try {
+      return this.receive(path, params, await this.#token(params?.scanID))
+    } catch (error) {
+      await this.#reportScanFailure(path, params)
+      throw error
+    }
   }
 
   //
@@ -67,10 +77,6 @@ class Telemetry {
 
   async #token(scanID) {
     const tokenContext = this.#tokenContextByScanID.get(scanID)
-    const body = {
-      profileId: process.env.EUREKA_PROFILE,
-      ...tokenContext
-    }
 
     try {
       const response = await fetch(`${this.#EWA_URL}/vdbe/token`, {
@@ -81,7 +87,7 @@ class Telemetry {
           'User-Agent': this.#USER_AGENT,
           'Accept': 'application/json'
         },
-        body: JSON.stringify(body)
+        body: JSON.stringify(tokenContext ?? {})
       })
       if (!response.ok) {
         throw new Error(`Telemetry token request failed at /vdbe/token [${response.status}] ${response.statusText}: ${await response.text()}`)
@@ -93,8 +99,7 @@ class Telemetry {
       const message = repository
         ? `Sensitive telemetry was skipped because the configured EUREKA_AGENT_TOKEN is not authorized for repository '${repository}'.`
         : 'Sensitive telemetry was skipped because the configured EUREKA_AGENT_TOKEN could not be authorized for the current scanned repository.'
-      const wrapped = new Error(message, { cause: error })
-      throw wrapped
+      throw new Error(message, { cause: error })
     }
   }
 
@@ -195,11 +200,7 @@ class Telemetry {
   #toReceiveURL(path, params, token) {
     const claims = this.#claims(token ?? this.#EUREKA_AGENT_TOKEN)
     const aud = claims.aud.replace(/\/$/, '')
-    if (path === `scans/:scanID/summary`) {
-      const profileId = process.env.EUREKA_PROFILE
-      const base = `${aud}/scans/${params.scanID}/summary`
-      return profileId ? `${base}?profileId=${profileId}` : base
-    }
+    if (path === `scans/:scanID/summary`) return `${aud}/scans/${params.scanID}/summary`
     throw new Error(`Internal Error: Unknown telemetry event: GET ${path}`)
   }
 
@@ -209,11 +210,11 @@ class Telemetry {
   }
 
   #toBody(path, body) {
-    if (path === `scans/started`) body = { ...body, profileId: process.env.EUREKA_PROFILE }
-    if (path === `scans/:scanID/started`) body = { ...body, profileId: process.env.EUREKA_PROFILE }
-    if (path === `scans/:scanID/completed`) body = { ...this.#toFindings(body.summary), timestamp: DateTime.now().toISO(), status: 'success', log: { sizeBytes: 0, warnings: 0, errors: 0, link: 'none' }, profileId: process.env.EUREKA_PROFILE, params: { id: '' }}
+    if (path === `scans/started`) body = { ...body }
+    if (path === `scans/:scanID/started`) body = { ...body }
+    if (path === `scans/:scanID/completed`) body = { ...this.#toFindings(body.summary), timestamp: DateTime.now().toISO(), status: 'success', log: { sizeBytes: 0, warnings: 0, errors: 0, link: 'none' }, params: { id: '' }}
     if (path === `scans/:scanID/failed`) body = { ...body, timestamp: DateTime.now().toISO(), status: 'failure', findings: { total: 0, critical: 0, high: 0, med: 0, low: 0 }, log: { sizeBytes: 0, warnings: 0, errors: 0, link: 'none' }, params: { id: '' }}
-    if (path === `scans/:scanID/results`) body = { findings: body.findings /* SARIF */, log: Buffer.from(body.log, 'utf8').toString('base64'), profileId: process.env.EUREKA_PROFILE  }
+    if (path === `scans/:scanID/results`) body = { findings: body.findings /* SARIF */, log: Buffer.from(body.log, 'utf8').toString('base64'), sboms: body.sboms }
     return JSON.stringify(body)
   }
 

@@ -27,10 +27,6 @@ With Radar CLI, you can:
 
 ---
 
-Telemetry is **off by default** — nothing is uploaded unless you explicitly enable it.
-
----
-
 ## Requirements
 
 - **Node.js** 22.17.0 or higher  
@@ -49,7 +45,7 @@ npm i -g @eurekadevsecops/radar
 Verify the installation:
 
 ```bash
-radar --version
+radar
 ```
 
 ---
@@ -66,8 +62,9 @@ Example output:
 
 ```
 COMMANDS
-  help      display help
-  scan      scan for vulnerabilities
+  help      display help              
+  import    import vulnerabilities    
+  scan      scan for vulnerabilities  
   scanners  display available scanners
 ```
 
@@ -111,18 +108,24 @@ All scanners in Radar are fully containerized for consistency and isolation. Whe
 | [Gitleaks](https://github.com/gitleaks/gitleaks)                                  | **Secrets**            | Gitleaks is a tool for detecting secrets like passwords, API keys, and tokens. |
 | [Grype](https://github.com/anchore/grype)                                         | **SCA**, **Container** | Scans the contents of a container image or filesystem to find known vulnerabilities. Find vulnerabilities for language-specific packages and major operating system packages. Supports Docker, OCI and Singularity image formats. |
 | [Opengrep](https://github.com/opengrep/opengrep)                                  | **SAST**               | Opengrep is an ultra-fast static code analysis engine to find security issues in code. Opengrep supports 30+ languages. |
+| [Semgrep](https://semgrep.dev/)                                                   | **SAST**               | Semgrep is an ultra-fast static code analysis engine to find security issues in code. Semgrep supports 30+ languages. |
+| [Veracode SAST](https://www.veracode.com/products/binary-static-analysis-sast/)   | **SAST**               | Accurately identify and prioritize security flaws. |
 | [Veracode SCA](https://www.veracode.com/products/software-composition-analysis/)  | **SCA**                | Effectively identify open-source risks with unmatched precision, ensuring secure and compliant code. Leverages a proprietary database to accurately and promptly detect new vulnerabilities. |
 
 Scanners grouped by category:
 
 | By Category       | Description                                      | Scanners                                                                                          |
 | ----------------- | ------------------------------------------------ | ------------------------------------------------------------------------------------------------- |
-| **SAST**          | Detects insecure code patterns                   | [Opengrep](https://github.com/opengrep/opengrep)                                                  |
+| **SAST**          | Detects insecure code patterns                   | [Opengrep](https://github.com/opengrep/opengrep), [Semgrep](https://semgrep.dev/), [Veracode SAST](https://www.veracode.com/products/binary-static-analysis-sast/)                                                  |
 | **Secrets**       | Finds hardcoded credentials                      | [Gitleaks](https://github.com/gitleaks/gitleaks)                                                  |
 | **SCA**           | Detects vulnerable package dependencies          | [Veracode SCA](https://www.veracode.com/products/software-composition-analysis/), [Grype](https://github.com/anchore/grype), [Dep-Scan](https://github.com/owasp-dep-scan/dep-scan) |
 | **Container**     | Scans Docker, OCI, and Singularity image formats | [Grype](https://github.com/anchore/grype)                                                         |
 
 Veracode SCA (formerly SourceClear) scanner requires the SRCCLR_API_TOKEN environment variable. If not present or valid, scanning with Veracode SCA will not work. Read more about it in [Veracode SCA online documentation](https://docs.veracode.com/r/Veracode_SCA_Agent_Environment_Variables#srcclr_api_token).
+
+Veracode SAST scanner requires the VERACODE_API_KEY_ID and VERACODE_API_KEY_SECRET environment variables. If not present or valid, scanning with Veracode SAST will not work. Read more about it in [Veracode SAST online documentation](https://docs.veracode.com/r/Install_the_Veracode_CLI?current-os=linux#configure-credentials-as-environment-variables).
+
+Semgrep scanner optionally needs the SEMGREP_APP_TOKEN environment variable. If not present or valid, the Semgrep scanner will attempt to run in license-free mode. Read more about it in [Semgrep online documentation](https://docs.semgrep.dev/deployment/add-semgrep-to-other-ci-providers#create-a-semgrep_app_token)
 
 ---
 
@@ -148,6 +151,8 @@ If no target is specified, the current working directory is scanned.
 | `-f, --format`     | Output format for severity display: `security` (high/moderate/low) or `sarif` (error/warning/note). |
 | `-e, --escalate`   | Treat specified lower severities as high (e.g. `--escalate=moderate,low`).                          |
 | `-l, --local`      | Run a local scan (don't upload scan findings to Eureka).                                            |
+| `--disable-analytics` | Disable analytics for this command run.                                                          |
+| `--skip-sbom`      | Skip SBOM generation.                                                                               |
 
 **PARAMETERS**
 
@@ -183,6 +188,10 @@ Or:
 # Treat warnings and notes as errors
 radar scan -f sarif -e warning,note
 ```
+
+#### SBOM Generation
+
+Radar CLI generates a CycloneDX SBOM after scanners complete and includes it in uploaded scan results when the scanned repository contains a CDXGen-supported dependency manifest or lockfile. SBOM generation runs CDXGen from a temporary workspace with dependency installation disabled, so scans remain predictable and do not run package manager installs. Repositories without supported dependency files skip SBOM generation. Use `--skip-sbom` to skip this step.
 
 #### Exit Codes
 
@@ -282,10 +291,9 @@ NOTE: To prevent Radar CLI from uploading scan findings even when you have `EURE
 
 ---
 
-## Telemetry & Privacy
+## Scan Uploads to Eureka ASPM
 
-Telemetry is **off by default**.
-Radar does **not** send any data externally unless you explicitly provide:
+Radar does **not** send any scan data externally unless you explicitly provide:
 
 * `EUREKA_AGENT_TOKEN`
 
@@ -297,6 +305,35 @@ When provided:
 When omitted:
 
 * Scans remain **fully local**
+
+---
+
+## Analytics
+
+Radar CLI collects limited product analytics to help improve the CLI, understand feature usage, and debug reliability issues across different environments. To disable analytics, use the `--disable-analytics` flag:
+
+```bash
+radar scan --disable-analytics
+```
+
+When this flag is set, Radar CLI does not send analytics events for that command run.
+
+<details>
+<summary>Analytics events collected by Radar CLI</summary>
+
+Radar CLI includes common runtime metadata with each analytics event, such as CLI version, Node.js version, platform, architecture, and the normalized command flags used for the run.
+
+| Event Name | Properties |
+| ---------- | ---------- |
+| `radar_scan_started` | `flags`, `scanners`, `scanners_count`, `local` |
+| `radar_scan_completed` | `flags`, `scanners`, `scanners_count`, `local`, `scan_id`, `summary` |
+| `radar_scan_failed` | `flags`, `scanners`, `scanners_count`, `local`, `error` |
+| `radar_import_started` | `flags`, `scanners`, `scanners_count` |
+| `radar_import_completed` | `flags`, `scanners`, `scanners_count`, `scan_id`, `summary` |
+| `radar_import_failed` | `flags`, `scanners`, `scanners_count`, `error` |
+| `radar_help_invoked` | `flags` |
+
+</details>
 
 ---
 
