@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.4.2](https://github.com/EurekaDevSecOps/radarctl/compare/v2.4.1...v2.4.2) (2026-09-03)
+
+
+### Code Refactoring
+
+* **PE-989:** Agent credentials should be able to be scoped to specific repositories ([#86](https://github.com/EurekaDevSecOps/radarctl/issues/86)) ([bc34736](https://github.com/EurekaDevSecOps/radarctl/commit/bc34736c141f50c6cb0b712e84538e374c3184b8))
+
 ## [2.4.1](https://github.com/EurekaDevSecOps/radarctl/compare/v2.4.0...v2.4.1) (2026-07-02)
 
 
