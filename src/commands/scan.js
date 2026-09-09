@@ -347,12 +347,6 @@ module.exports = {
         summary = await SARIF.analysis.summarize(results.sarif, target)
       }
 
-      // Send telemetry: scan summary.
-      if (telemetry.enabled && scanID && !args.LOCAL) {
-        const res = await telemetry.send(`scans/:scanID/completed`, { scanID }, { summary })
-        if (!res.ok) log(`WARNING: Scan status (completed) telemetry upload failed: [${res.status}] ${res.statusText}: ${await res.text()}`)
-      }
-
       // Display summarized findings.
       if (!args.QUIET) {
         log()
@@ -379,6 +373,12 @@ module.exports = {
       } else {
         // Set the exit code to 8 if there are any vulnerabilities.
         exitCode = 0x8
+      }
+
+      // Send telemetry: scan summary.
+      if (telemetry.enabled && scanID && !args.LOCAL) {
+        const res = await telemetry.send(`scans/:scanID/completed`, { scanID }, { summary, scanExitCode: exitCode })
+        if (!res.ok) log(`WARNING: Scan status (completed) telemetry upload failed: [${res.status}] ${res.statusText}: ${await res.text()}`)
       }
 
       analytics.track(analytics.EVENTS.radar_scan_completed, {
