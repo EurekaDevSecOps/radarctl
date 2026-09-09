@@ -1,0 +1,16 @@
+image: node:22
+
+stages:
+  - scan
+
+radar_scan:
+  stage: scan
+  services:
+    - docker:dind
+  variables:
+    DOCKER_HOST: tcp://docker:2375
+  before_script:
+    - apt-get update && apt-get install -y docker.io
+  script:
+    - npm i -g @eurekadevsecops/radar
+    - radar scan

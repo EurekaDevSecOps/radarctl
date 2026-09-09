@@ -1,7 +1,7 @@
-const os = require('node:os')
 const path = require('node:path')
 
 const { CICD_PROVIDERS, getCiProvider, getCloneDir } = require('./ci')
+const { getRadarDataDir } = require('./app_data')
 
 // resolves the target scan path to ensure that it is in the cloned directory for the CI/CD provider
 const resolveWithinCloneDir = ({ target, cloneDir, label }) => {
@@ -35,56 +35,40 @@ const resolveScanTarget = (target) => {
   const provider = getCiProvider()
   const cloneDir = getCloneDir(provider)
 
-  switch (provider) {
-    case CICD_PROVIDERS.BITBUCKET.value:
-      assertCloneDir({
-        cloneDir,
-        label: CICD_PROVIDERS.BITBUCKET.env,
-        provider: CICD_PROVIDERS.BITBUCKET.label
-      })
-      return resolveWithinCloneDir({
-        target,
-        cloneDir,
-        label: CICD_PROVIDERS.BITBUCKET.env
-      })
-    case CICD_PROVIDERS.GITLAB.value:
-      assertCloneDir({
-        cloneDir,
-        label: CICD_PROVIDERS.GITLAB.env,
-        provider: CICD_PROVIDERS.GITLAB.label
-      })
-      return resolveWithinCloneDir({
-        target,
-        cloneDir,
-        label: CICD_PROVIDERS.GITLAB.env
-      })
-    case 'default':
-    default:
-      break
+  const providerConfig = Object.values(CICD_PROVIDERS).find(
+    ({ value }) => value === provider
+  )
+
+  if (providerConfig) {
+    assertCloneDir({
+      cloneDir,
+      label: providerConfig.env,
+      provider: providerConfig.label
+    })
+    return resolveWithinCloneDir({
+      target,
+      cloneDir,
+      label: providerConfig.env
+    })
   }
 
   // if no provider or target is set, default to current working directory
   return path.resolve(path.normalize(target ?? process.cwd()))
 }
 
-// resolve scans directory based on CI/CD provider or default to ~/.radar/scans
+// resolve scans directory based on CI/CD provider or default to the Radar app data directory
 const resolveScansDir = () => {
   const provider = getCiProvider()
   const cloneDir = getCloneDir(provider)
+  const providerConfig = Object.values(CICD_PROVIDERS).find(
+    ({ value }) => value === provider
+  )
 
-  if (provider === CICD_PROVIDERS.BITBUCKET.value) {
+  if (providerConfig) {
     assertCloneDir({
       cloneDir,
-      label: CICD_PROVIDERS.BITBUCKET.env,
-      provider: CICD_PROVIDERS.BITBUCKET.label
-    })
-  }
-
-  if (provider === CICD_PROVIDERS.GITLAB.value) {
-    assertCloneDir({
-      cloneDir,
-      label: CICD_PROVIDERS.GITLAB.env,
-      provider: CICD_PROVIDERS.GITLAB.label
+      label: providerConfig.env,
+      provider: providerConfig.label
     })
   }
 
@@ -93,7 +77,7 @@ const resolveScansDir = () => {
     return path.join(baseDir, '.radar', 'scans')
   }
 
-  return path.join(os.homedir(), '.radar', 'scans')
+  return path.join(getRadarDataDir(), 'scans')
 }
 
 module.exports = {

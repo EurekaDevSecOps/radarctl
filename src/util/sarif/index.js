@@ -2,6 +2,7 @@ module.exports = {
   transforms: {
     escalate: require('./transforms/escalate'),
     embedDirectives: require('./transforms/embed_directives'),
+    filterByDiff: require('./transforms/filter_by_diff'),
     merge: require('./transforms/merge'),
     normalize: require('./transforms/normalize')
   },

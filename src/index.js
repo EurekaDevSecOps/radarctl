@@ -8,7 +8,8 @@ const plugins = {
   settings: require('@persistr/clif-plugin-settings'),
   git: require(path.join(__dirname, 'plugins', 'git')),
   scanners: require(path.join(__dirname, 'plugins', 'scanners')),
-  telemetry: require(path.join(__dirname, 'plugins', 'telemetry'))
+  telemetry: require(path.join(__dirname, 'plugins', 'telemetry')),
+  analytics: require(path.join(__dirname, 'plugins', 'analytics'))
 }
 
 module.exports = {
