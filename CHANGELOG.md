@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.4.3](https://github.com/EurekaDevSecOps/radarctl/compare/v2.4.2...v2.4.3) (2026-10-16)
+
+
+### Fixes
+
+* **telemetry:** Extend scan results upload timeout ([#110](https://github.com/EurekaDevSecOps/radarctl/issues/110)) ([f0a89a9](https://github.com/EurekaDevSecOps/radarctl/commit/f0a89a96ed72740c7de8a18e941e177360c3b44d))
+
 ## [2.4.2](https://github.com/EurekaDevSecOps/radarctl/compare/v2.4.1...v2.4.2) (2026-09-03)
 
 
