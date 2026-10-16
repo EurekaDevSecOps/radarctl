@@ -35,8 +35,9 @@
     "humanize-duration": "^3.33.0",
     "jwt-decode": "^4.0.0",
     "luxon": "^3.7.1",
-    "smol-toml": "^1.4.1",
-    "tiny-spinner": "^2.0.5"
+    "smol-toml": "^1.9.1",
+    "tiny-spinner": "^2.0.5",
+    "undici": "^6.29.1"
   },
   "devDependencies": {
     "@commitlint/cli": "^20.4.1",
