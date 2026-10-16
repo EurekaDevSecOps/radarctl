@@ -1,6 +1,12 @@
 const pkg = require('../../package.json')
 const { DateTime } = require("luxon")
 const { jwtDecode } = require('jwt-decode')
+const { Agent } = require('undici')
+
+const resultsDispatcher = new Agent({
+  headersTimeout: 15 * 60 * 1000,
+  bodyTimeout: 15 * 60 * 1000
+})
 
 class Telemetry {
   #EUREKA_AGENT_TOKEN = process.env.EUREKA_AGENT_TOKEN
@@ -112,7 +118,8 @@ class Telemetry {
         'User-Agent': this.#USER_AGENT,
         'Accept': 'application/json'
       },
-      body: this.#toBody(path, body)
+      body: this.#toBody(path, body),
+      ...(path === 'scans/:scanID/results' ? { dispatcher: resultsDispatcher } : {})
     })
     .then(async (res) => {
 //TODO: Display this on stdout only if --debug option is selected on the cmd line.
