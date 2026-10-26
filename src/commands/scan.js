@@ -94,13 +94,10 @@ module.exports = {
     'security' severity format. Findings can also be displayed as errors, warnings,
     and notes. This is the 'sarif' severity format.
 
-    Runs entirely on your machine — by default, Radar CLI doesn’t upload any findings.
-    Your vulnerabilities stay local and private. To upload results to Eureka ASPM,
-    provide your API credentials through the 'EUREKA_AGENT_TOKEN' environment variable.
-    When set, Radar CLI automatically uploads results after each scan — letting you view
-    your full scan history and all findings in the Eureka ASPM Dashboard. To prevent
-    Radar CLI from uploading scan findings even when you have 'EUREKA_AGENT_TOKEN' set,
-    you can pass the LOCAL option on the command line.
+    By default, Radar CLI runs a connected scan and uploads findings to Eureka ASPM.
+    Connected scans require API credentials through the 'EUREKA_AGENT_TOKEN'
+    environment variable and authorization to scan the selected repository. To run
+    entirely on your machine without authorization or uploads, pass the LOCAL option.
 
     Use the THRESHOLD option to return a non-zero exit code for severities at or
     above the threshold. For example, setting THRESHOLD to "high" would result in
@@ -186,17 +183,21 @@ module.exports = {
       return severity
     })
     const assets = path.join(__dirname, '..', '..', 'scanners') // scanner assets
-    const scansdir = paths.resolveScansDir()
-    const tmpdir = path.join(scansdir, crypto.randomUUID()) // temporary output directory
-    fs.mkdirSync(tmpdir, { recursive: true })
     const outfile = args.OUTPUT ? path.resolve(args.OUTPUT) : undefined // output file, if any
-    const sbomFile = path.join(tmpdir, 'sbom.cdx.json')
 
     // Validate scan parameters.
     if (!categories.length) throw new Error(`CATEGORIES must be one or more of '${availableCategories.join("', '")}', or 'all'`)
     if (!scanners.length) throw new Error('No available scanners selected.')
 
-    const isLocal = !telemetry.enabled || args.LOCAL
+    const isLocal = args.LOCAL === true
+    if (!isLocal && !telemetry.enabled) {
+      throw new Error('Set EUREKA_AGENT_TOKEN from the Eureka DevSecOps web app to run a cloud scan, or pass \'--local\' for a local scan.')
+    }
+
+    const scansdir = paths.resolveScansDir()
+    const tmpdir = path.join(scansdir, crypto.randomUUID()) // temporary output directory
+    fs.mkdirSync(tmpdir, { recursive: true })
+    const sbomFile = path.join(tmpdir, 'sbom.cdx.json')
 
     analytics.track(analytics.EVENTS.radar_scan_started, {
       flags: args,
@@ -218,35 +219,22 @@ module.exports = {
     let scanURL = undefined
     const timestamp = DateTime.now().toISO()
 
-    if (telemetry.enabled && !args.LOCAL) {
-      try {
+    let connectedScanStarted = false
+    try {
+      if (!isLocal) {
         const res = await telemetry.send(`scans/started`, {}, { scanners: scanners.map((s) => s.name), scanID, metadata, timestamp })
         if (!res.ok) throw new Error(`[${res.status}] ${res.statusText}: ${await res.text()}`)
         const data = await res.json()
         scanID = data.scan_id
         scanURL = data.scan_url
+        if (!scanID) throw new Error('Connected scan could not be started: no scan ID was returned.')
       }
-      catch (error) {
-        log(`WARNING: Telemetry will be skipped for this scan run: ${error.message}\n`)
-        if (args.DEBUG) {
-          log(error)
-          if (error?.cause?.code === 'ECONNREFUSED') {
-            log(error.cause.errors)
-            log()
-          }
-        }
-      }
-    }
 
-    try {
       // Send telemetry: scan started (stage 2).
-      if (telemetry.enabled && scanID && !args.LOCAL) {
-        try {
-          const res = await telemetry.sendSensitive(`scans/:scanID/started`, { scanID }, { metadata, timestamp })
-          if (!res.ok) log(`WARNING: Scan started (stage 2) telemetry upload failed: [${res.status}] ${res.statusText}: ${await res.text()}`)
-        } catch (error) {
-          logTelemetrySkipped(log, error, args.DEBUG)
-        }
+      if (!isLocal) {
+        const res = await telemetry.sendSensitive(`scans/:scanID/started`, { scanID }, { metadata, timestamp })
+        if (!res.ok) throw new Error(`Connected scan was not authorized: [${res.status}] ${res.statusText}: ${await res.text()}`)
+        connectedScanStarted = true
       }
 
       // Run scanners.
@@ -400,7 +388,7 @@ module.exports = {
 
       return exitCode
     } catch (error) {
-      if (telemetry.enabled && scanID && !args.LOCAL) {
+      if (connectedScanStarted) {
         try {
           const res = await telemetry.send(`scans/:scanID/failed`, { scanID })
           if (!res.ok) log(`WARNING: Scan status (not completed) telemetry upload failed: [${res.status}] ${res.statusText}: ${await res.text()}`)
