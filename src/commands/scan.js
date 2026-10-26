@@ -191,7 +191,7 @@ module.exports = {
 
     const isLocal = args.LOCAL === true
     if (!isLocal && !telemetry.enabled) {
-      throw new Error('Connected scans require EUREKA_AGENT_TOKEN. Pass \'--local\' to run a local scan.')
+      throw new Error('Set EUREKA_AGENT_TOKEN from the Eureka DevSecOps web app to run a cloud scan, or pass \'--local\' for a local scan.')
     }
 
     const scansdir = paths.resolveScansDir()

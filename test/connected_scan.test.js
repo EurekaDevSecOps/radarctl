@@ -76,10 +76,10 @@ const runScan = async ({ local = false, telemetry }) => {
   }
 }
 
-test('requires --local when connected scan credentials are unavailable', async () => {
+test('explains how to configure connected scans or run locally', async () => {
   await assert.rejects(
     runScan({ telemetry: { enabled: false } }),
-    /Connected scans require EUREKA_AGENT_TOKEN/
+    /Set EUREKA_AGENT_TOKEN from the Eureka DevSecOps web app to run a cloud scan, or pass '--local' for a local scan\./
   )
 })
 
